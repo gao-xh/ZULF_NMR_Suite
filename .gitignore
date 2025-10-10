@@ -1,0 +1,87 @@
+# ZULF-NMR Suite
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MATLAB
+*.asv
+*.m~
+
+# Environments
+environments/python/*
+!environments/python/README.md
+!environments/python/setup_embedded_python.ps1
+!environments/python/setup_embedded_python.bat
+!environments/python/SETUP_GUIDE.md
+
+environments/spinach/*
+!environments/spinach/README.md
+!environments/spinach/setup_spinach.ps1
+
+# First-run setup marker
+.setup_complete
+
+# MATLAB startup script (auto-generated)
+matlab_startup.m
+
+# Application specific
+user_save/**
+!user_save/.gitkeep
+spectrum/**
+!spectrum/.gitkeep
+
+# New data structure
+data/simulation/user_save/**
+!data/simulation/user_save/.gitkeep
+data/simulation/output/**
+!data/simulation/output/.gitkeep
+data/experimental/**
+!data/experimental/raw/.gitkeep
+!data/experimental/processed/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Temporary
+temp/
+tmp/
+*.tmp
+
+# Configuration (local overrides)
+config.local.txt
