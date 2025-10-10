@@ -85,3 +85,7 @@ tmp/
 
 # Configuration (local overrides)
 config.local.txt
+
+# Backups
+backups/
+
