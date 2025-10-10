@@ -80,13 +80,64 @@ def show_first_run_dialog():
         return False
 
 
+def apply_user_config(startup_config):
+    """
+    Apply user configuration from startup dialog.
+    
+    Args:
+        startup_config: Dictionary from StartupDialog.get_config()
+    """
+    import subprocess
+    
+    workspace_root = Path(__file__).parent.parent.parent
+    
+    # Configure embedded Spinach if requested
+    if startup_config.get('configure_embedded_spinach'):
+        spinach_script = workspace_root / "environments" / "spinach" / "setup_spinach.ps1"
+        if spinach_script.exists():
+            print("Configuring embedded Spinach...")
+            subprocess.run(
+                ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(spinach_script)],
+                check=False
+            )
+    
+    # Configure MATLAB Engine if requested and a path provided
+    if startup_config.get('configure_matlab_engine'):
+        matlab_path = startup_config.get('matlab_path')
+        if matlab_path:
+            matlab_setup = Path(matlab_path) / "extern" / "engines" / "python" / "setup.py"
+            embedded_python = workspace_root / "environments" / "python" / "python.exe"
+            
+            if matlab_setup.exists() and embedded_python.exists():
+                # Install MATLAB Engine to embedded Python
+                print(f"Installing MATLAB Engine from {matlab_path}...")
+                print(f"Target: {embedded_python}")
+                
+                result = subprocess.run(
+                    [str(embedded_python), str(matlab_setup), "install"],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    print("✓ MATLAB Engine installed successfully!")
+                else:
+                    print(f"✗ MATLAB Engine installation failed:")
+                    print(result.stderr)
+            else:
+                if not matlab_setup.exists():
+                    print(f"✗ MATLAB setup.py not found at: {matlab_setup}")
+                if not embedded_python.exists():
+                    print(f"✗ Embedded Python not found at: {embedded_python}")
+
+
 def run_setup_wizard():
     """Run the setup wizard."""
     
     import subprocess
     from pathlib import Path
     
-    workspace_root = Path(__file__).parent
+    workspace_root = Path(__file__).parent.parent.parent
     
     print("\n=== ZULF-NMR Suite Setup Wizard ===\n")
     
