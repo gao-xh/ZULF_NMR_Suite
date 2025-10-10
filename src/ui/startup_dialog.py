@@ -200,11 +200,18 @@ class StartupDialog(QDialog):
         self.configure_matlab_btn.clicked.connect(self._on_configure_matlab)
         config_layout.addWidget(self.configure_matlab_btn)
 
-        self.skip_matlab_btn = QPushButton("Skip MATLAB (use Python)")
+        self.skip_matlab_btn = QPushButton("Skip MATLAB (Pure Python Mode)")
+        self.skip_matlab_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         self.skip_matlab_btn.clicked.connect(self._on_skip_matlab)
         config_layout.addWidget(self.skip_matlab_btn)
 
         layout.addLayout(config_layout)
+        
+        # Add info label for pure Python mode
+        skip_info = QLabel("💡 Tip: You can use Pure Python Mode without any MATLAB installation")
+        skip_info.setStyleSheet("color: #2196F3; font-size: 9pt; margin-top: 5px;")
+        skip_info.setWordWrap(True)
+        layout.addWidget(skip_info)
 
         # --- Embedded Spinach configuration ---
         spinach_layout = QHBoxLayout()
@@ -420,8 +427,13 @@ class StartupDialog(QDialog):
         self.skip_matlab_flag = True
         self.use_matlab_checkbox.setChecked(False)
         self.use_matlab_checkbox.setEnabled(False)
-        self.matlab_status.setText("⏭ MATLAB skipped by user; Python fallback will be used")
-        self.matlab_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
+        self.matlab_path_input.setEnabled(False)
+        self.browse_matlab_btn.setEnabled(False)
+        self.configure_matlab_btn.setEnabled(False)
+        self.matlab_status.setText("✓ Pure Python Mode selected - No MATLAB required")
+        self.matlab_status.setStyleSheet("margin-left: 20px; color: green; font-weight: bold; font-size: 9pt;")
+        self.python_status.setText("✓ Using NumPy/SciPy simulation backend")
+        self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
 
     def _on_spinach_toggled(self, checked):
         # Checkbox toggle only enables/disables the configure button

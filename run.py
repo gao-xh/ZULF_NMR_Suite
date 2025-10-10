@@ -178,14 +178,24 @@ def main():
         print()
         
         # Show setup dialog
-        if show_first_run_dialog():
+        setup_choice = show_first_run_dialog()
+        
+        if setup_choice == 'full':
             print("\nPlease run the setup scripts:")
             print("  1. .\\environments\\python\\setup_embedded_python.ps1")
             print("  2. .\\environments\\spinach\\setup_spinach.ps1")
             print("\nThen restart the application.")
             sys.exit(0)
-        else:
+        elif setup_choice == 'python_only':
+            print("\nPython-only mode selected.")
+            print("Please run the Python setup script:")
+            print("  .\\environments\\python\\setup_embedded_python.ps1")
+            print("\nYou can configure MATLAB/Spinach later from the startup dialog.")
+            print("Then restart the application.")
+            sys.exit(0)
+        else:  # skip
             print("Continuing with system Python...")
+
     
     # Environment setup
     print("Checking environment...")
@@ -261,8 +271,8 @@ def main():
             QMessageBox.critical(
                 None,
                 "Initialization Failed",
-                "Failed to initialize MATLAB engine or validation system.\n"
-                "Please check your MATLAB installation and try again."
+                "Failed to initialize application.\n"
+                "Please check the error messages in the console."
             )
             app.quit()
     

@@ -32,7 +32,14 @@ def check_first_run():
 
 
 def show_first_run_dialog():
-    """Show first-run setup dialog."""
+    """
+    Show first-run setup dialog with options.
+    
+    Returns:
+        str: 'full' = setup Python+MATLAB+Spinach
+             'python_only' = setup Python only (skip MATLAB)
+             'skip' = skip all setup (use system Python)
+    """
     
     try:
         from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
@@ -47,25 +54,30 @@ def show_first_run_dialog():
         msg.setText("<h3>Welcome to ZULF-NMR Suite v0.1.0!</h3>")
         msg.setInformativeText(
             "<p>This appears to be your first time running the application.</p>"
-            "<p><b>Would you like to:</b></p>"
+            "<p><b>Setup Options:</b></p>"
             "<ul>"
-            "<li>Configure embedded Python environment?</li>"
-            "<li>Link MATLAB and Spinach (optional)?</li>"
+            "<li><b>Full Setup:</b> Configure Python + MATLAB + Spinach (recommended if you have MATLAB)</li>"
+            "<li><b>Python Only:</b> Configure Python environment only (Pure Python mode - no MATLAB required)</li>"
+            "<li><b>Skip Setup:</b> Use system Python (advanced users)</li>"
             "</ul>"
-            "<p><i>You can also do this later from the settings.</i></p>"
+            "<p><i>💡 Tip: Python-only mode works great without any MATLAB installation!</i></p>"
         )
         
         # Custom buttons
-        setup_btn = msg.addButton("Setup Now", QMessageBox.AcceptRole)
-        skip_btn = msg.addButton("Skip (Use System Python)", QMessageBox.RejectRole)
+        full_btn = msg.addButton("Full Setup (Python+MATLAB+Spinach)", QMessageBox.AcceptRole)
+        python_only_btn = msg.addButton("Python Only (Skip MATLAB)", QMessageBox.ActionRole)
+        skip_btn = msg.addButton("Skip All (Use System)", QMessageBox.RejectRole)
         
-        msg.setDefaultButton(setup_btn)
+        msg.setDefaultButton(python_only_btn)  # Default to Python-only for easier setup
         msg.exec()
         
-        if msg.clickedButton() == setup_btn:
-            return True
+        clicked = msg.clickedButton()
+        if clicked == full_btn:
+            return 'full'
+        elif clicked == python_only_btn:
+            return 'python_only'
         else:
-            return False
+            return 'skip'
             
     except ImportError:
         # PySide6 not available, skip GUI
@@ -77,7 +89,8 @@ def show_first_run_dialog():
         print("  1. Run: environments\\python\\setup_embedded_python.ps1")
         print("  2. Run: environments\\spinach\\setup_spinach.ps1")
         print()
-        return False
+        print("Or run with Python-only mode (no MATLAB): just setup Python")
+        return 'skip'
 
 
 def apply_user_config(startup_config):
