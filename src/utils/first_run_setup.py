@@ -93,8 +93,21 @@ def apply_user_config(startup_config):
         startup_config: Dictionary from StartupDialog.get_config()
     """
     import subprocess
+    from .user_config import get_user_config
     
     workspace_root = Path(__file__).parent.parent.parent
+    user_config = get_user_config()
+    
+    # Mark first run as complete
+    if user_config.is_first_run():
+        user_config.mark_first_run_complete()
+        print("First run setup completed")
+    
+    # Save user preferences
+    user_config.set_preferences(
+        use_matlab=startup_config.get('use_matlab', False) and not startup_config.get('skip_matlab', False),
+        execution_mode=startup_config.get('execution', 'local')
+    )
     
     # Configure embedded Spinach if requested
     if startup_config.get('configure_embedded_spinach'):
@@ -105,6 +118,11 @@ def apply_user_config(startup_config):
                 ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(spinach_script)],
                 check=False
             )
+            # Mark Spinach as configured
+            spinach_path = workspace_root / "environments" / "spinach"
+            if (spinach_path / "kernel").exists():
+                user_config.set_spinach_config(spinach_path=spinach_path)
+                print("[OK] Spinach configured successfully")
     
     # Configure MATLAB Engine if requested and a path provided
     if startup_config.get('configure_matlab_engine'):
@@ -125,15 +143,33 @@ def apply_user_config(startup_config):
                 )
                 
                 if result.returncode == 0:
-                    print("✓ MATLAB Engine installed successfully!")
+                    print("[OK] MATLAB Engine installed successfully!")
+                    
+                    # Detect MATLAB version
+                    matlab_version = None
+                    parts = Path(matlab_path).parts
+                    for part in parts:
+                        if part.startswith('R20'):  # R2021a, R2025a, etc.
+                            matlab_version = part
+                            break
+                    
+                    # Save MATLAB configuration
+                    user_config.set_matlab_config(
+                        matlab_path=matlab_path,
+                        version=matlab_version,
+                        engine_installed=True
+                    )
+                    print(f"MATLAB configuration saved: {matlab_version} at {matlab_path}")
                 else:
-                    print(f"✗ MATLAB Engine installation failed:")
+                    print(f"[!] MATLAB Engine installation failed:")
                     print(result.stderr)
             else:
                 if not matlab_setup.exists():
-                    print(f"✗ MATLAB setup.py not found at: {matlab_setup}")
+                    print(f"[!] MATLAB setup.py not found at: {matlab_setup}")
                 if not embedded_python.exists():
-                    print(f"✗ Embedded Python not found at: {embedded_python}")
+                    print(f"[!] Embedded Python not found at: {embedded_python}")
+        else:
+            print("[!] No MATLAB path provided, skipping MATLAB Engine installation")
 
 
 def run_setup_wizard():

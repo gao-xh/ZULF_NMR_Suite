@@ -208,7 +208,7 @@ class StartupDialog(QDialog):
         layout.addLayout(config_layout)
         
         # Add info label for pure Python mode
-        skip_info = QLabel("💡 Tip: You can use Pure Python Mode without any MATLAB installation")
+        skip_info = QLabel("Tip: You can use Pure Python Mode without any MATLAB installation")
         skip_info.setStyleSheet("color: #2196F3; font-size: 9pt; margin-top: 5px;")
         skip_info.setWordWrap(True)
         layout.addWidget(skip_info)
@@ -303,12 +303,12 @@ class StartupDialog(QDialog):
         
         # Update MATLAB status
         if matlab_available:
-            self.matlab_status.setText("✓ MATLAB engine initialized and ready")
+            self.matlab_status.setText("[OK] MATLAB engine initialized and ready")
             self.matlab_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
         else:
-            self.matlab_status.setText("✗ MATLAB engine not available (will use Python fallback)")
+            self.matlab_status.setText("[!] MATLAB engine not available (will use Python fallback)")
             self.matlab_status.setStyleSheet("margin-left: 20px; color: red; font-size: 9pt;")
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(False)
@@ -320,26 +320,26 @@ class StartupDialog(QDialog):
         # Update Python status (always shown as fallback)
         if python_available:
             if matlab_available and self.use_matlab_checkbox.isChecked():
-                self.python_status.setText("ⓘ Available as fallback")
+                self.python_status.setText("[i] Available as fallback")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
             else:
-                self.python_status.setText("✓ Will be used for simulations")
+                self.python_status.setText("[OK] Will be used for simulations")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
         else:
-            self.python_status.setText("✗ Not available (TwoD_simulation module not found)")
+            self.python_status.setText("[!] Not available (TwoD_simulation module not found)")
             self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
         
         # Update Local status (always available)
-        self.local_status.setText("✓ Always available")
+        self.local_status.setText("[OK] Always available")
         self.local_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
         
         # Update Workstation status
         if network_available:
-            self.workstation_status.setText("✓ Network interface available")
+            self.workstation_status.setText("[OK] Network interface available")
             self.workstation_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
             self.workstation_radio.setEnabled(True)
         else:
-            self.workstation_status.setText("✗ Network interface not configured")
+            self.workstation_status.setText("[!] Network interface not configured")
             self.workstation_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
             self.workstation_radio.setEnabled(False)
         
@@ -355,10 +355,10 @@ class StartupDialog(QDialog):
         python_available = self.init_results.get('python_simulation_available', True)
         if python_available:
             if checked:
-                self.python_status.setText("ⓘ Available as fallback")
+                self.python_status.setText("[i] Available as fallback")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
             else:
-                self.python_status.setText("✓ Will be used for simulations")
+                self.python_status.setText("[OK] Will be used for simulations")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
         
         self._update_status_message()
@@ -420,7 +420,7 @@ class StartupDialog(QDialog):
     def _on_configure_matlab(self):
         # mark for configuration; actual installation should be handled by first-run setup
         self.configure_matlab_flag = True
-        self.matlab_status.setText("⚙️ MATLAB engine configuration requested")
+        self.matlab_status.setText("[CONFIG] MATLAB engine configuration requested")
         self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
 
     def _on_skip_matlab(self):
@@ -430,9 +430,9 @@ class StartupDialog(QDialog):
         self.matlab_path_input.setEnabled(False)
         self.browse_matlab_btn.setEnabled(False)
         self.configure_matlab_btn.setEnabled(False)
-        self.matlab_status.setText("✓ Pure Python Mode selected - No MATLAB required")
+        self.matlab_status.setText("[OK] Pure Python Mode selected - No MATLAB required")
         self.matlab_status.setStyleSheet("margin-left: 20px; color: green; font-weight: bold; font-size: 9pt;")
-        self.python_status.setText("✓ Using NumPy/SciPy simulation backend")
+        self.python_status.setText("[OK] Using NumPy/SciPy simulation backend")
         self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
 
     def _on_spinach_toggled(self, checked):
@@ -443,7 +443,7 @@ class StartupDialog(QDialog):
     def _on_configure_spinach(self):
         self.configure_spinach_flag = True
         self.spinach_checkbox.setChecked(True)  # Also check the checkbox
-        self.python_status.setText("⚙️ Embedded Spinach configuration requested")
+        self.python_status.setText("[CONFIG] Embedded Spinach configuration requested")
         self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
     
     def get_config(self):
