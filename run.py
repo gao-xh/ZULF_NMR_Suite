@@ -170,31 +170,26 @@ def main():
     
     setup_status = check_first_run()
     if setup_status['first_run']:
+        # First run only triggered if embedded Python is missing
         print("\n" + "=" * 60)
-        print("FIRST RUN DETECTED")
+        print("WARNING: Embedded Python Not Found")
         print("=" * 60)
-        print(f"Python environment: {'Ready' if setup_status['python_ready'] else 'Not configured'}")
+        print(f"Python environment: {'Ready' if setup_status['python_ready'] else 'MISSING'}")
         print(f"Spinach/MATLAB:     {'Ready' if setup_status['spinach_ready'] else 'Not configured'}")
         print()
         
         # Show setup dialog
         setup_choice = show_first_run_dialog()
         
-        if setup_choice == 'full':
-            print("\nPlease run the setup scripts:")
-            print("  1. .\\environments\\python\\setup_embedded_python.ps1")
-            print("  2. .\\environments\\spinach\\setup_spinach.ps1")
+        if setup_choice == 'setup':
+            print("\nPlease run the Python setup script:")
+            print("  .\\environments\\python\\setup_embedded_python.ps1")
             print("\nThen restart the application.")
             sys.exit(0)
-        elif setup_choice == 'python_only':
-            print("\nPython-only mode selected.")
-            print("Please run the Python setup script:")
-            print("  .\\environments\\python\\setup_embedded_python.ps1")
-            print("\nYou can configure MATLAB/Spinach later from the startup dialog.")
-            print("Then restart the application.")
-            sys.exit(0)
         else:  # skip
-            print("Continuing with system Python...")
+            print("WARNING: Continuing with system Python (not recommended)...")
+            print("For best experience, please set up embedded Python.")
+
 
     
     # Environment setup

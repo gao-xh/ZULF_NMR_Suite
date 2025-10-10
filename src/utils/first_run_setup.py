@@ -21,7 +21,9 @@ def check_first_run():
     spinach_ready = (workspace_root / "environments" / "spinach" / "kernel").exists()
     config_exists = (workspace_root / ".setup_complete").exists()
     
-    needs_setup = not (python_ready and config_exists)
+    # First run only if embedded Python is missing
+    # (If Python exists but no config, just show startup dialog)
+    needs_setup = not python_ready
     
     return {
         'first_run': needs_setup,
@@ -33,12 +35,11 @@ def check_first_run():
 
 def show_first_run_dialog():
     """
-    Show first-run setup dialog with options.
+    Show first-run setup dialog.
     
     Returns:
-        str: 'full' = setup Python+MATLAB+Spinach
-             'python_only' = setup Python only (skip MATLAB)
-             'skip' = skip all setup (use system Python)
+        str: 'setup' = run Python setup script (should not happen if Python exists)
+             'skip' = skip setup (continue with current state)
     """
     
     try:
@@ -48,48 +49,39 @@ def show_first_run_dialog():
         app = QApplication.instance() or QApplication(sys.argv)
         
         msg = QMessageBox()
-        msg.setWindowTitle("Welcome to ZULF-NMR Suite")
-        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Setup Required")
+        msg.setIcon(QMessageBox.Warning)
         
-        msg.setText("<h3>Welcome to ZULF-NMR Suite v0.1.0!</h3>")
+        msg.setText("<h3>Embedded Python Not Found</h3>")
         msg.setInformativeText(
-            "<p>This appears to be your first time running the application.</p>"
-            "<p><b>Setup Options:</b></p>"
-            "<ul>"
-            "<li><b>Full Setup:</b> Configure Python + MATLAB + Spinach (recommended if you have MATLAB)</li>"
-            "<li><b>Python Only:</b> Configure Python environment only (Pure Python mode - no MATLAB required)</li>"
-            "<li><b>Skip Setup:</b> Use system Python (advanced users)</li>"
-            "</ul>"
-            "<p><i>💡 Tip: Python-only mode works great without any MATLAB installation!</i></p>"
+            "<p>The embedded Python environment is missing.</p>"
+            "<p>Please run the setup script to install it:</p>"
+            "<p><code>environments\\python\\setup_embedded_python.ps1</code></p>"
+            "<p><b>Or</b> continue with system Python (not recommended).</p>"
         )
         
         # Custom buttons
-        full_btn = msg.addButton("Full Setup (Python+MATLAB+Spinach)", QMessageBox.AcceptRole)
-        python_only_btn = msg.addButton("Python Only (Skip MATLAB)", QMessageBox.ActionRole)
-        skip_btn = msg.addButton("Skip All (Use System)", QMessageBox.RejectRole)
+        setup_btn = msg.addButton("Exit to Run Setup", QMessageBox.AcceptRole)
+        skip_btn = msg.addButton("Continue with System Python", QMessageBox.RejectRole)
         
-        msg.setDefaultButton(python_only_btn)  # Default to Python-only for easier setup
+        msg.setDefaultButton(setup_btn)
         msg.exec()
         
         clicked = msg.clickedButton()
-        if clicked == full_btn:
-            return 'full'
-        elif clicked == python_only_btn:
-            return 'python_only'
+        if clicked == setup_btn:
+            return 'setup'
         else:
             return 'skip'
             
     except ImportError:
         # PySide6 not available, skip GUI
         print("=" * 60)
-        print("Welcome to ZULF-NMR Suite v0.1.0!")
+        print("WARNING: Embedded Python Not Found!")
         print("=" * 60)
         print()
-        print("This is your first run. For best experience:")
-        print("  1. Run: environments\\python\\setup_embedded_python.ps1")
-        print("  2. Run: environments\\spinach\\setup_spinach.ps1")
+        print("Please run: environments\\python\\setup_embedded_python.ps1")
+        print("Or continue with system Python (not recommended)")
         print()
-        print("Or run with Python-only mode (no MATLAB): just setup Python")
         return 'skip'
 
 
