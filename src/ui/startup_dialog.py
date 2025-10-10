@@ -424,10 +424,13 @@ class StartupDialog(QDialog):
         self.matlab_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
 
     def _on_spinach_toggled(self, checked):
-        self.selected_config['configure_embedded_spinach'] = checked
+        # Checkbox toggle only enables/disables the configure button
+        # Actual flag is set when user clicks "Configure Spinach" button
+        pass
 
     def _on_configure_spinach(self):
         self.configure_spinach_flag = True
+        self.spinach_checkbox.setChecked(True)  # Also check the checkbox
         self.python_status.setText("⚙️ Embedded Spinach configuration requested")
         self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
     
