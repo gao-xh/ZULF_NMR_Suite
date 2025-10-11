@@ -251,43 +251,38 @@ def main():
             
             print(f"[DEBUG] init_results: {init_results}")
             
-            # Check if this is first run or MATLAB not configured
-            from src.utils.user_config import get_user_config
-            user_config = get_user_config()
-            matlab_configured = user_config.data.get('matlab', {}).get('configured', False)
+            # Check MATLAB status from splash screen initialization
+            matlab_available = init_results.get('matlab_available', False)
             
-            print(f"[DEBUG] matlab_configured: {matlab_configured}")
+            if matlab_available:
+                print("[INFO] MATLAB engine started successfully during initialization")
+            else:
+                print("[INFO] MATLAB engine not available - will offer Pure Python mode")
             
-            # Auto-detect MATLAB if not configured
-            if not matlab_configured or not init_results.get('matlab_available', False):
-                print("\nAuto-detecting MATLAB installation...")
-                from src.utils.first_run_setup import auto_detect_matlab
-                detected_matlab = auto_detect_matlab()
+            # Auto-detect MATLAB installation path for display purposes
+            from src.utils.first_run_setup import auto_detect_matlab
+            detected_matlab = auto_detect_matlab()
+            
+            if detected_matlab:
+                print(f"[INFO] Detected MATLAB at: {detected_matlab}")
+                init_results['detected_matlab_path'] = str(detected_matlab)
                 
-                print(f"[DEBUG] detected_matlab: {detected_matlab}")
-                
-                if detected_matlab:
-                    print(f"  ✓ Found MATLAB: {detected_matlab}")
-                    # Add detected MATLAB path to init_results for dialog to use
-                    init_results['detected_matlab_path'] = str(detected_matlab)
-                    
-                    # Try to get version
-                    version_info_file = detected_matlab / "VersionInfo.xml"
-                    if version_info_file.exists():
-                        try:
-                            import xml.etree.ElementTree as ET
-                            tree = ET.parse(version_info_file)
-                            root = tree.getroot()
-                            release = root.find('.//release')
-                            if release is not None and release.text:
-                                init_results['detected_matlab_version'] = release.text.strip()
-                                print(f"  ✓ Version: {init_results['detected_matlab_version']}")
-                        except Exception:
-                            pass
-                else:
-                    print("  ✗ MATLAB not found - you can manually specify the path or use Pure Python mode")
+                # Try to get version
+                version_info_file = detected_matlab / "VersionInfo.xml"
+                if version_info_file.exists():
+                    try:
+                        import xml.etree.ElementTree as ET
+                        tree = ET.parse(version_info_file)
+                        root = tree.getroot()
+                        release = root.find('.//release')
+                        if release is not None and release.text:
+                            init_results['detected_matlab_version'] = release.text.strip()
+                            print(f"[INFO] MATLAB Version: {init_results['detected_matlab_version']}")
+                    except Exception:
+                        pass
             
-            # Show startup configuration dialog
+            # ALWAYS show startup configuration dialog
+            # Let user choose: MATLAB vs Pure Python, Local vs Cloud
             from src.ui.startup_dialog import StartupDialog
             
             print(f"[DEBUG] Creating StartupDialog with init_results...")
@@ -304,34 +299,70 @@ def main():
             if result == QDialog.Accepted:
                 # User accepted, get configuration
                 startup_config = startup_dialog.get_config()
-
-                # Apply user configuration (MATLAB Engine, Spinach, etc.)
-                from src.utils.first_run_setup import apply_user_config
-                config_results = apply_user_config(startup_config)
                 
-                # Check if restart is needed (e.g., MATLAB Engine was just installed)
-                if config_results.get('needs_restart', False):
-                    from PySide6.QtWidgets import QMessageBox
+                print(f"[DEBUG] User selected config: {startup_config}")
+
+                # Check if user chose MATLAB mode
+                use_matlab = startup_config.get('use_matlab', False)
+                
+                if use_matlab and not matlab_available:
+                    # User wants MATLAB but it wasn't started successfully
+                    # Need to apply configuration (install MATLAB Engine, etc.)
+                    print("[INFO] User chose MATLAB but engine not ready - applying configuration...")
+                    from src.utils.first_run_setup import apply_user_config
+                    config_results = apply_user_config(startup_config)
                     
-                    msg = QMessageBox()
-                    msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("Configuration Complete - Restart Required")
-                    msg.setText("<h3>MATLAB Engine Configured Successfully!</h3>")
-                    msg.setInformativeText(
-                        "<p>MATLAB Engine has been installed to the embedded Python environment.</p>"
-                        "<p><b>Please restart the application</b> to use MATLAB Spinach engine.</p>"
-                        "<p>Configuration saved to: <code>user_config.json</code></p>"
-                    )
-                    msg.setStandardButtons(QMessageBox.Ok)
-                    msg.setDefaultButton(QMessageBox.Ok)
-                    msg.exec()
+                    # Check if restart is needed
+                    if config_results.get('needs_restart', False):
+                        from PySide6.QtWidgets import QMessageBox
+                        
+                        msg = QMessageBox()
+                        msg.setIcon(QMessageBox.Information)
+                        msg.setWindowTitle("Configuration Complete - Restart Required")
+                        msg.setText("<h3>MATLAB Engine Configured Successfully!</h3>")
+                        msg.setInformativeText(
+                            "<p>MATLAB Engine has been installed to the embedded Python environment.</p>"
+                            "<p><b>Please restart the application</b> to use MATLAB Spinach engine.</p>"
+                            "<p>Configuration saved to: <code>user_config.json</code></p>"
+                        )
+                        msg.setStandardButtons(QMessageBox.Ok)
+                        msg.setDefaultButton(QMessageBox.Ok)
+                        msg.exec()
+                        
+                        # Exit the application
+                        print("\n" + "="*60)
+                        print("CONFIGURATION COMPLETE - PLEASE RESTART APPLICATION")
+                        print("="*60)
+                        print("\nRun start.bat again to start with MATLAB Spinach engine.")
+                        sys.exit(0)
+                
+                elif use_matlab and matlab_available:
+                    # User chose MATLAB and engine is already started
+                    # Just use the existing engine from splash screen
+                    print("[INFO] Using MATLAB engine from initialization")
+                    # Engine is already stored in global ENGINE manager by splash screen
                     
-                    # Exit the application
-                    print("\n" + "="*60)
-                    print("CONFIGURATION COMPLETE - PLEASE RESTART APPLICATION")
-                    print("="*60)
-                    print("\nRun start.bat again to start with MATLAB Spinach engine.")
-                    sys.exit(0)
+                else:
+                    # User chose Pure Python mode
+                    print("[INFO] User chose Pure Python mode")
+                    # If MATLAB engine was started, we should clean it up
+                    if matlab_available and splash.worker and hasattr(splash.worker, 'engine_cm'):
+                        try:
+                            print("[INFO] Cleaning up MATLAB engine...")
+                            splash.worker.engine_cm.__exit__(None, None, None)
+                        except:
+                            pass
+                
+                # Save user's choice to config
+                from src.utils.user_config import get_user_config
+                user_config = get_user_config()
+                user_config.data['preferences'] = {
+                    'use_matlab': use_matlab,
+                    'execution_mode': startup_config.get('execution_mode', 'local')
+                }
+                user_config.data['first_run_completed'] = True
+                user_config.save()
+                print(f"[INFO] Configuration saved: use_matlab={use_matlab}")
 
                 # Start main application (tab-based container)
                 from main_application import MainApplication
