@@ -289,7 +289,31 @@ def main():
 
                 # Apply user configuration (MATLAB Engine, Spinach, etc.)
                 from src.utils.first_run_setup import apply_user_config
-                apply_user_config(startup_config)
+                config_results = apply_user_config(startup_config)
+                
+                # Check if restart is needed (e.g., MATLAB Engine was just installed)
+                if config_results.get('needs_restart', False):
+                    from PySide6.QtWidgets import QMessageBox
+                    
+                    msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("Configuration Complete - Restart Required")
+                    msg.setText("<h3>MATLAB Engine Configured Successfully!</h3>")
+                    msg.setInformativeText(
+                        "<p>MATLAB Engine has been installed to the embedded Python environment.</p>"
+                        "<p><b>Please restart the application</b> to use MATLAB Spinach engine.</p>"
+                        "<p>Configuration saved to: <code>user_config.json</code></p>"
+                    )
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.setDefaultButton(QMessageBox.Ok)
+                    msg.exec()
+                    
+                    # Exit the application
+                    print("\n" + "="*60)
+                    print("CONFIGURATION COMPLETE - PLEASE RESTART APPLICATION")
+                    print("="*60)
+                    print("\nRun start.bat again to start with MATLAB Spinach engine.")
+                    sys.exit(0)
 
                 # Start main application (tab-based container)
                 from main_application import MainApplication

@@ -304,12 +304,23 @@ def apply_user_config(startup_config):
     
     Args:
         startup_config: Dictionary from StartupDialog.get_config()
+        
+    Returns:
+        dict: Configuration results {
+            'needs_restart': bool,  # True if user needs to restart the application
+            'matlab_engine_installed': bool  # True if MATLAB Engine was just installed
+        }
     """
     import subprocess
     from .user_config import get_user_config
     
     workspace_root = Path(__file__).parent.parent.parent
     user_config = get_user_config()
+    
+    results = {
+        'needs_restart': False,
+        'matlab_engine_installed': False
+    }
     
     # Mark first run as complete
     if user_config.is_first_run():
@@ -378,6 +389,10 @@ def apply_user_config(startup_config):
                     print("[SUCCESS] MATLAB Engine installed successfully!")
                     print("="*60)
                     
+                    # Mark that MATLAB Engine was just installed
+                    results['matlab_engine_installed'] = True
+                    results['needs_restart'] = True
+                    
                     # Detect MATLAB version from path
                     matlab_version = None
                     matlab_path_obj = Path(matlab_path)
@@ -426,6 +441,8 @@ def apply_user_config(startup_config):
                     print(f"[!] Embedded Python not found at: {embedded_python}")
         else:
             print("[!] No MATLAB path provided, skipping MATLAB Engine installation")
+    
+    return results
 
 
 def run_setup_wizard():
