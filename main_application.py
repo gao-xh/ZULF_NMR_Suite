@@ -107,10 +107,17 @@ class MainApplication(QMainWindow):
         try:
             from src.simulation.ui.simulation_window import MultiSystemSpinachUI
             
-            simulation_widget = MultiSystemSpinachUI(
-                matlab_engine=self.matlab_engine,
-                parent=self
-            )
+            # Prepare startup config for simulation module
+            sim_config = {
+                'matlab_engine': self.matlab_engine,
+                'backend': self.startup_config.get('backend', 'matlab'),
+                'execution': self.startup_config.get('execution', 'local'),
+                'use_matlab': self.startup_config.get('use_matlab', True),
+                'ui_only_mode': self.startup_config.get('ui_only_mode', False)
+            }
+            
+            simulation_widget = MultiSystemSpinachUI(startup_config=sim_config)
+            simulation_widget.setParent(self)
             self.tab_widget.addTab(simulation_widget, "NMR Simulation")
             self.statusBar().showMessage("Simulation module loaded", 3000)
             
@@ -122,6 +129,8 @@ class MainApplication(QMainWindow):
             error_layout.addWidget(error_label)
             self.tab_widget.addTab(error_widget, "NMR Simulation (Error)")
             print(f"Error loading simulation module: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Tab 2: Data Processing Module (placeholder)
         processing_widget = QWidget()

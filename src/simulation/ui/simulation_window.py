@@ -827,15 +827,19 @@ class JCouplingEditorDialog(QDialog):
 
 # ---------- Main window ----------
 class MultiSystemSpinachUI(QMainWindow):
-    def __init__(self, startup_config=None):
-        super().__init__()
+    def __init__(self, startup_config=None, parent=None):
+        super().__init__(parent)
         
         # Store startup configuration
         self.startup_config = startup_config or {
             'use_matlab': True,
             'execution': 'local',
-            'ui_only_mode': False
+            'ui_only_mode': False,
+            'matlab_engine': None
         }
+        
+        # Extract MATLAB engine if provided
+        self.matlab_engine = self.startup_config.get('matlab_engine')
         
         self.setWindowTitle(config.app_name)
         self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
