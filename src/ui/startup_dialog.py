@@ -316,6 +316,7 @@ class StartupDialog(QDialog):
         python_available = self.init_results.get('python_simulation_available', True)
         network_available = self.init_results.get('network_available', False)
         first_run = self.init_results.get('first_run', False)
+        spinach_ready = self.init_results.get('spinach_ready', False)
         
         # Update MATLAB status
         if matlab_available:
@@ -327,10 +328,10 @@ class StartupDialog(QDialog):
             self.matlab_config_container.setVisible(False)
             self.spinach_config_container.setVisible(False)
         else:
-            self.matlab_status.setText("[!] MATLAB engine not available")
-            self.matlab_status.setStyleSheet("margin-left: 20px; color: red; font-size: 9pt;")
+            self.matlab_status.setText("[CONFIG] MATLAB engine configuration requested")
+            self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
             self.use_matlab_checkbox.setEnabled(True)
-            self.use_matlab_checkbox.setChecked(False)
+            self.use_matlab_checkbox.setChecked(True)
             
             # Show configuration controls when MATLAB is not available or first run
             if first_run or not matlab_available:
@@ -340,11 +341,15 @@ class StartupDialog(QDialog):
                 self.browse_matlab_btn.setEnabled(True)
                 self.configure_matlab_btn.setEnabled(True)
         
-        # Update Python status (always shown as fallback)
+        # Update Python status based on Spinach availability
         if python_available:
             if matlab_available and self.use_matlab_checkbox.isChecked():
                 self.python_status.setText("[i] Available as fallback")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
+            elif spinach_ready and not matlab_available:
+                # Spinach is ready but MATLAB engine failed
+                self.python_status.setText("[CONFIG] Embedded Spinach configuration requested")
+                self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
             else:
                 self.python_status.setText("[OK] Will be used for simulations")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")

@@ -382,11 +382,18 @@ class InitializationWorker(QThread):
     
     def get_init_results(self):
         """Get initialization results for startup dialog"""
+        # Check first run status
+        from src.utils.first_run_setup import check_first_run
+        first_run_status = check_first_run()
+        
         return {
             'matlab_available': self.matlab_engine_result and self.matlab_engine_result.get('status') == 'success',
             'python_simulation_available': True,  # TODO: Check if TwoD_simulation is available
             'network_available': self.network_check_result and self.network_check_result.get('status') == 'success',
-            'file_integrity': self.file_integrity_result and self.file_integrity_result.get('status') == 'success'
+            'file_integrity': self.file_integrity_result and self.file_integrity_result.get('status') == 'success',
+            'first_run': first_run_status.get('first_run', False),
+            'python_ready': first_run_status.get('python_ready', True),
+            'spinach_ready': first_run_status.get('spinach_ready', False)
         }
 
 

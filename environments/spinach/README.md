@@ -1,86 +1,20 @@
-# Spinach Toolbox Integration
+Spinach is a fast (polynomial complexity scaling for liquid state NMR) open-source 
+spin dynamics simulation library that supports NMR, EPR, MRI, DNP, MAS, Optimal Control,
+PHIP, singlet state NMR, and other forms of Magnetic Resonance spectroscopy. Historical
+notes on its development are published here:
 
-This directory is reserved for the MATLAB Spinach toolbox.
+https://spindynamics.org/documents/spinach_history.pdf
 
-## Quick Setup (Recommended)
+https://doi.org/10.1016/j.jmr.2019.07.031
 
-Run the auto-setup script to detect MATLAB and configure Spinach:
+The complete list of developers and contributors during the 2008-2024 development before
+the package was moved to GitHub is here:
 
-```powershell
-.\setup_spinach.ps1
-```
+https://spindynamics.org/wiki/index.php?title=Spinach_developer_team
 
-This will:
-1. Detect your MATLAB installation
-2. Configure Spinach path
-3. Create MATLAB startup script
-4. Test the connection
+Detailed documentation is here:
 
-## Manual Installation
+https://spindynamics.org/wiki/index.php?title=Main_Page
 
-### Option 1: Copy Existing Spinach
-
-If you have Spinach installed:
-```matlab
-% In MATLAB, find your Spinach installation
-which spinach
-% Copy that entire directory here
-```
-
-### Option 2: Download Fresh Copy
-
-1. Download Spinach from: https://spindynamics.org/Spinach.php
-2. Extract the archive
-3. Copy all contents to this `environments/spinach/` directory
-
-## Expected Structure
-
-After installation, this directory should contain:
-
-```
-spinach/
-├── kernel/                     # Core computation engine
-│   ├── grids/
-│   ├── operators/
-│   ├── propagation/
-│   └── utilities/
-│
-├── interfaces/                 # User interfaces
-│   ├── nmr/
-│   ├── esr/
-│   └── general/
-│
-├── experiments/                # Experiment templates
-│   ├── nmr_liquids/
-│   ├── nmr_solids/
-│   └── zeeman_zulf/
-│
-├── auxiliary/                  # Helper functions
-├── etc/                        # Configuration files
-└── VERSION                     # Version file
-```
-
-## Verification
-
-To verify correct installation:
-1. Launch the application
-2. Check splash screen for "Spinach: Detected (embedded)"
-3. If not detected, check MATLAB path and directory structure
-
-## Auto-Detection
-
-The application automatically:
-- Detects Spinach in this location on startup
-- Adds to MATLAB path if MATLAB is available
-- Falls back to system Spinach if this is empty
-- Uses pure Python simulation if MATLAB is unavailable
-
-## License
-
-Spinach is distributed under its own license terms.
-Please ensure compliance with Spinach licensing when distributing.
-
-## More Information
-
-- Spinach Documentation: http://spindynamics.org/
-- Integration Details: See `docs/setup/ENVIRONMENT_INTEGRATION.md`
+Spinach requires Matlab 2024a or later with the following toolboxes: Parallel Computing, 
+Deep Learning, Reinforcement Lerning, Optimisation, Statistics and Machine Learning, Mapping.
