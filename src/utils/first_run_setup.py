@@ -128,13 +128,23 @@ def apply_user_config(startup_config):
     if startup_config.get('configure_matlab_engine'):
         matlab_path = startup_config.get('matlab_path')
         if matlab_path:
+            print("\n" + "="*60)
+            print("CONFIGURING MATLAB ENGINE")
+            print("="*60)
+            print(f"MATLAB Path: {matlab_path}")
+            
             matlab_setup = Path(matlab_path) / "extern" / "engines" / "python" / "setup.py"
             embedded_python = workspace_root / "environments" / "python" / "python.exe"
             
+            print(f"Setup Script: {matlab_setup}")
+            print(f"Target Python: {embedded_python}")
+            print(f"Setup exists: {matlab_setup.exists()}")
+            print(f"Python exists: {embedded_python.exists()}")
+            
             if matlab_setup.exists() and embedded_python.exists():
                 # Install MATLAB Engine to embedded Python
-                print(f"Installing MATLAB Engine from {matlab_path}...")
-                print(f"Target: {embedded_python}")
+                print(f"\nInstalling MATLAB Engine to embedded Python...")
+                print("This may take a few minutes...")
                 
                 result = subprocess.run(
                     [str(embedded_python), str(matlab_setup), "install"],
@@ -142,8 +152,18 @@ def apply_user_config(startup_config):
                     text=True
                 )
                 
+                print(f"\nReturn code: {result.returncode}")
+                if result.stdout:
+                    print("STDOUT:")
+                    print(result.stdout)
+                if result.stderr:
+                    print("STDERR:")
+                    print(result.stderr)
+                
                 if result.returncode == 0:
-                    print("[OK] MATLAB Engine installed successfully!")
+                    print("\n" + "="*60)
+                    print("[SUCCESS] MATLAB Engine installed successfully!")
+                    print("="*60)
                     
                     # Detect MATLAB version from path
                     matlab_version = None

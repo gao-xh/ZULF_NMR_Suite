@@ -449,10 +449,50 @@ class StartupDialog(QDialog):
             self.matlab_path_input.setText(path)
 
     def _on_configure_matlab(self):
-        # mark for configuration; actual installation should be handled by first-run setup
+        """Mark MATLAB for configuration - will be installed when Start Application is clicked"""
+        from pathlib import Path
+        
+        # Get MATLAB path from input
+        matlab_path = self.matlab_path_input.text().strip()
+        
+        if not matlab_path:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "MATLAB Path Required",
+                "Please enter your MATLAB installation path first.\n\n"
+                "Example: F:/MATLAB or C:/Program Files/MATLAB/R2024a"
+            )
+            return
+        
+        # Validate MATLAB path
+        matlab_path_obj = Path(matlab_path)
+        if not matlab_path_obj.exists():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Invalid Path",
+                f"MATLAB directory not found:\n{matlab_path}\n\n"
+                "Please check the path and try again."
+            )
+            return
+        
+        # Check if MATLAB Engine setup.py exists
+        setup_py = matlab_path_obj / "extern" / "engines" / "python" / "setup.py"
+        if not setup_py.exists():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "MATLAB Engine Not Found",
+                f"MATLAB Engine setup.py not found at:\n{setup_py}\n\n"
+                "Please ensure this is a valid MATLAB installation directory."
+            )
+            return
+        
+        # Mark for configuration
         self.configure_matlab_flag = True
-        self.matlab_status.setText("[CONFIG] MATLAB engine configuration requested")
-        self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
+        self.matlab_status.setText("[READY] MATLAB engine will be configured when you click Start Application")
+        self.matlab_status.setStyleSheet("margin-left: 20px; color: blue; font-weight: bold; font-size: 9pt;")
 
     def _on_skip_matlab(self):
         self.skip_matlab_flag = True
