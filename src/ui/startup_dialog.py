@@ -12,9 +12,9 @@ Based on initialization results from splash screen.
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QRadioButton, QCheckBox, QButtonGroup, QFrame
+    QGroupBox, QRadioButton, QCheckBox, QButtonGroup, QFrame,
+    QWidget, QLineEdit, QFileDialog
 )
-from PySide6.QtWidgets import QLineEdit, QFileDialog
 from PySide6.QtGui import QFont, QPixmap
 
 from src.utils.config import config
@@ -183,7 +183,13 @@ class StartupDialog(QDialog):
         layout.addWidget(python_info)
         layout.addWidget(python_desc)
         layout.addWidget(self.python_status)
-        # --- MATLAB path input and configuration ---
+        
+        # --- MATLAB path input and configuration (initially hidden) ---
+        # Create a container widget for MATLAB configuration controls
+        self.matlab_config_container = QWidget()
+        matlab_config_layout = QVBoxLayout()
+        matlab_config_layout.setContentsMargins(20, 10, 0, 0)
+        
         path_layout = QHBoxLayout()
         self.matlab_path_input = QLineEdit()
         self.matlab_path_input.setPlaceholderText(r"C:\Program Files\MATLAB\R20XXx")
@@ -193,7 +199,7 @@ class StartupDialog(QDialog):
         self.browse_matlab_btn.clicked.connect(self._on_browse_matlab)
         path_layout.addWidget(self.browse_matlab_btn)
 
-        layout.addLayout(path_layout)
+        matlab_config_layout.addLayout(path_layout)
 
         config_layout = QHBoxLayout()
         self.configure_matlab_btn = QPushButton("Configure MATLAB Engine")
@@ -205,16 +211,23 @@ class StartupDialog(QDialog):
         self.skip_matlab_btn.clicked.connect(self._on_skip_matlab)
         config_layout.addWidget(self.skip_matlab_btn)
 
-        layout.addLayout(config_layout)
+        matlab_config_layout.addLayout(config_layout)
         
         # Add info label for pure Python mode
         skip_info = QLabel("Tip: You can use Pure Python Mode without any MATLAB installation")
         skip_info.setStyleSheet("color: #2196F3; font-size: 9pt; margin-top: 5px;")
         skip_info.setWordWrap(True)
-        layout.addWidget(skip_info)
+        matlab_config_layout.addWidget(skip_info)
 
-        # --- Embedded Spinach configuration ---
+        self.matlab_config_container.setLayout(matlab_config_layout)
+        self.matlab_config_container.setVisible(False)  # Hidden by default
+        layout.addWidget(self.matlab_config_container)
+
+        # --- Embedded Spinach configuration (initially hidden) ---
+        self.spinach_config_container = QWidget()
         spinach_layout = QHBoxLayout()
+        spinach_layout.setContentsMargins(20, 0, 0, 0)
+        
         self.spinach_checkbox = QCheckBox("Configure embedded Spinach package")
         self.spinach_checkbox.toggled.connect(self._on_spinach_toggled)
         spinach_layout.addWidget(self.spinach_checkbox)
@@ -223,7 +236,9 @@ class StartupDialog(QDialog):
         self.configure_spinach_btn.clicked.connect(self._on_configure_spinach)
         spinach_layout.addWidget(self.configure_spinach_btn)
 
-        layout.addLayout(spinach_layout)
+        self.spinach_config_container.setLayout(spinach_layout)
+        self.spinach_config_container.setVisible(False)  # Hidden by default
+        layout.addWidget(self.spinach_config_container)
         
         group.setLayout(layout)
         return group
@@ -300,6 +315,7 @@ class StartupDialog(QDialog):
         matlab_available = self.init_results.get('matlab_available', False)
         python_available = self.init_results.get('python_simulation_available', True)
         network_available = self.init_results.get('network_available', False)
+        first_run = self.init_results.get('first_run', False)
         
         # Update MATLAB status
         if matlab_available:
@@ -307,15 +323,22 @@ class StartupDialog(QDialog):
             self.matlab_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
+            # Hide configuration controls when MATLAB is working
+            self.matlab_config_container.setVisible(False)
+            self.spinach_config_container.setVisible(False)
         else:
-            self.matlab_status.setText("[!] MATLAB engine not available (will use Python fallback)")
+            self.matlab_status.setText("[!] MATLAB engine not available")
             self.matlab_status.setStyleSheet("margin-left: 20px; color: red; font-size: 9pt;")
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(False)
-            # Enable user to provide MATLAB path and attempt configuration even if not auto-detected
-            self.matlab_path_input.setEnabled(True)
-            self.browse_matlab_btn.setEnabled(True)
-            self.configure_matlab_btn.setEnabled(True)
+            
+            # Show configuration controls when MATLAB is not available or first run
+            if first_run or not matlab_available:
+                self.matlab_config_container.setVisible(True)
+                self.spinach_config_container.setVisible(True)
+                self.matlab_path_input.setEnabled(True)
+                self.browse_matlab_btn.setEnabled(True)
+                self.configure_matlab_btn.setEnabled(True)
         
         # Update Python status (always shown as fallback)
         if python_available:
@@ -449,11 +472,6 @@ class StartupDialog(QDialog):
     def get_config(self):
         """Get selected configuration"""
         return self.selected_config
-
-
-# Standalone widget class for Qt Designer integration (future use)
-class QWidget:
-    pass
 
 
 if __name__ == "__main__":
