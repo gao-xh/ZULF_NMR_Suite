@@ -72,6 +72,9 @@ class StartupDialog(QDialog):
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
         
+        # Check if MATLAB has issues
+        matlab_has_issues = self.init_results.get('matlab_has_issues', False)
+        
         # Set window flags to ensure it stays on top
         self.setWindowFlags(
             Qt.Dialog | 
@@ -85,7 +88,14 @@ class StartupDialog(QDialog):
         layout.setSpacing(20)
         
         # Header - Title
-        title = QLabel("Configure Startup Options")
+        if matlab_has_issues:
+            title_text = "MATLAB Configuration Required"
+            subtitle_text = "MATLAB engine could not be started. Configure MATLAB or use Pure Python mode."
+        else:
+            title_text = "Configure Startup Options"
+            subtitle_text = "Choose simulation backend and execution mode based on detected capabilities"
+        
+        title = QLabel(title_text)
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -94,9 +104,12 @@ class StartupDialog(QDialog):
         layout.addWidget(title)
         
         # Header - Subtitle
-        subtitle = QLabel("Choose simulation backend and execution mode based on detected capabilities")
+        subtitle = QLabel(subtitle_text)
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("color: gray; margin-bottom: 10px;")
+        if matlab_has_issues:
+            subtitle.setStyleSheet("color: #d9534f; margin-bottom: 10px; font-weight: bold;")
+        else:
+            subtitle.setStyleSheet("color: gray; margin-bottom: 10px;")
         layout.addWidget(subtitle)
         
         # Separator

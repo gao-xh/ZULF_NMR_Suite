@@ -253,11 +253,15 @@ def main():
             
             # Check MATLAB status from splash screen initialization
             matlab_available = init_results.get('matlab_available', False)
+            matlab_has_issues = init_results.get('matlab_has_issues', False)
             
             if matlab_available:
                 print("[INFO] MATLAB engine started successfully during initialization")
             else:
-                print("[INFO] MATLAB engine not available - will offer Pure Python mode")
+                print("[INFO] MATLAB engine not available")
+                if matlab_has_issues:
+                    matlab_error = init_results.get('matlab_error', 'Unknown error')
+                    print(f"[WARN] MATLAB issues detected: {matlab_error}")
             
             # Auto-detect MATLAB installation path for display purposes
             from src.utils.first_run_setup import auto_detect_matlab
@@ -281,12 +285,26 @@ def main():
                     except Exception:
                         pass
             
-            # ALWAYS show startup configuration dialog
-            # Let user choose: MATLAB vs Pure Python, Local vs Cloud
-            from src.ui.startup_dialog import StartupDialog
+            # Decide which dialog to show based on MATLAB status
+            if matlab_has_issues:
+                # MATLAB has problems - show CONFIGURATION dialog
+                # This allows user to configure/fix MATLAB or choose Pure Python
+                print("[INFO] MATLAB has issues - showing configuration dialog")
+                from src.ui.startup_dialog import StartupDialog
+                
+                # Use StartupDialog but in "configuration mode"
+                # The dialog will show different UI based on matlab_has_issues flag
+                startup_dialog = StartupDialog(init_results)
+                startup_dialog.setWindowTitle("Configuration Required - MATLAB Unavailable")
+            else:
+                # MATLAB is OK (or not needed) - show SELECTION dialog
+                # User can choose between MATLAB/Pure Python and Local/Cloud
+                print("[INFO] Showing startup selection dialog")
+                from src.ui.startup_dialog import StartupDialog
+                
+                startup_dialog = StartupDialog(init_results)
+                startup_dialog.setWindowTitle("Select Execution Mode")
             
-            print(f"[DEBUG] Creating StartupDialog with init_results...")
-            startup_dialog = StartupDialog(init_results)
             print(f"[DEBUG] StartupDialog created, showing...")
             startup_dialog.show()
             startup_dialog.raise_()

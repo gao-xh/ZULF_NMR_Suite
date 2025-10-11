@@ -36,6 +36,9 @@ class InitializationWorker(QThread):
         super().__init__()
         self.engine_cm = None  # Store context manager to keep engine alive
         
+        # Track initialization status
+        self.matlab_has_issues = False  # Set to True if MATLAB startup fails
+        
     def run(self):
         """Run initialization process with actual simulation test"""
         try:
@@ -111,13 +114,16 @@ class InitializationWorker(QThread):
                 self.progress.emit("MATLAB engine started successfully")
                 self.progress_percent.emit(30)
                 matlab_engine_available = True
+                self.matlab_has_issues = False  # Mark as OK
                 
             except Exception as e:
-                # MATLAB engine failed - don't stop, don't show error, but record it
+                # MATLAB engine failed - mark as having issues
                 self.matlab_engine_result = {"status": "failed", "error": str(e)}
                 self.progress.emit("MATLAB engine unavailable (continuing with limited functionality)")
                 self.progress_percent.emit(30)
                 matlab_engine_available = False
+                self.matlab_has_issues = True  # Mark as having issues
+                print(f"MATLAB engine startup failed: {e}")
                 # Continue to Phase 4 with fake progress
             
             # ========== Phase 4: MATLAB Initialization Simulation (30-90%, 60% total) ==========
@@ -388,6 +394,8 @@ class InitializationWorker(QThread):
         
         return {
             'matlab_available': self.matlab_engine_result and self.matlab_engine_result.get('status') == 'success',
+            'matlab_has_issues': self.matlab_has_issues,  # Add issue flag
+            'matlab_error': self.matlab_engine_result.get('error') if self.matlab_has_issues else None,
             'python_simulation_available': True,  # TODO: Check if TwoD_simulation is available
             'network_available': self.network_check_result and self.network_check_result.get('status') == 'success',
             'file_integrity': self.file_integrity_result and self.file_integrity_result.get('status') == 'success',
