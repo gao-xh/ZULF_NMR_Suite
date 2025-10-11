@@ -3,7 +3,8 @@ Utility functions for data management
 """
 
 from .Save_Load import SaveLoad, MoleculeData, ParameterData, SpectrumData
-from .read_mol import *
+# Lazy import read_mol to avoid tkinter dependency at startup
+# from .read_mol import *
 
 __all__ = [
     'SaveLoad',

@@ -67,6 +67,12 @@ except Exception as e:
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QDialog
 
+# CRITICAL: Add project root to Python path BEFORE importing any src modules
+# This is especially important for embedded Python which has different sys.path[0]
+PROJECT_ROOT = Path(__file__).parent.absolute()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 # Import configuration
 from src.utils.config import config
 
@@ -76,7 +82,6 @@ from src.utils.icon_manager import icon_manager
 
 # Environment Configuration (loaded from config.txt)
 PYTHON_ENV_PATH = config.get('PYTHON_ENV_PATH')
-PROJECT_ROOT = Path(__file__).parent.absolute()
 
 
 def check_environment():
@@ -237,20 +242,29 @@ def main():
         """Called when splash screen closes"""
         nonlocal main_window, startup_config
         
+        print("\n[DEBUG] on_splash_closed() called")
+        print(f"[DEBUG] init_success: {splash.init_success}")
+        
         if splash.init_success:
             # Get initialization results from splash screen worker
             init_results = splash.worker.get_init_results() if splash.worker else {}
+            
+            print(f"[DEBUG] init_results: {init_results}")
             
             # Check if this is first run or MATLAB not configured
             from src.utils.user_config import get_user_config
             user_config = get_user_config()
             matlab_configured = user_config.data.get('matlab', {}).get('configured', False)
             
+            print(f"[DEBUG] matlab_configured: {matlab_configured}")
+            
             # Auto-detect MATLAB if not configured
             if not matlab_configured or not init_results.get('matlab_available', False):
                 print("\nAuto-detecting MATLAB installation...")
                 from src.utils.first_run_setup import auto_detect_matlab
                 detected_matlab = auto_detect_matlab()
+                
+                print(f"[DEBUG] detected_matlab: {detected_matlab}")
                 
                 if detected_matlab:
                     print(f"  ✓ Found MATLAB: {detected_matlab}")
@@ -276,12 +290,16 @@ def main():
             # Show startup configuration dialog
             from src.ui.startup_dialog import StartupDialog
             
+            print(f"[DEBUG] Creating StartupDialog with init_results...")
             startup_dialog = StartupDialog(init_results)
+            print(f"[DEBUG] StartupDialog created, showing...")
             startup_dialog.show()
             startup_dialog.raise_()
             startup_dialog.activateWindow()
             
+            print(f"[DEBUG] Executing dialog...")
             result = startup_dialog.exec()
+            print(f"[DEBUG] Dialog result: {result}")
             
             if result == QDialog.Accepted:
                 # User accepted, get configuration
@@ -339,6 +357,7 @@ def main():
     
     # Connect splash closed signal
     splash.closed.connect(on_splash_closed)
+    print("[DEBUG] Connected splash.closed signal to on_splash_closed()")
     
     # Run application
     sys.exit(app.exec())

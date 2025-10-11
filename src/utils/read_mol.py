@@ -3,8 +3,7 @@ import json
 import csv
 from dataclasses import dataclass, field    
 from typing import List, Dict, Any  
-import tkinter as tk
-from tkinter import filedialog
+from PySide6.QtWidgets import QFileDialog, QApplication
 
 
 
@@ -18,9 +17,18 @@ class MoleculeData:
     information: str = None
 
 def get_user_save_path() -> str:
-    root = tk.Tk()
-    root.withdraw() 
-    user_save_path = filedialog.askdirectory(title="please select a folder")
+    """Get user save path using PySide6 file dialog"""
+    # Ensure QApplication exists
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    
+    user_save_path = QFileDialog.getExistingDirectory(
+        None,
+        "Please select a folder",
+        "",
+        QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+    )
     return user_save_path
 
 def read_user_molecule(structure_path: str = None, symmetry_path: str = None) -> MoleculeData:

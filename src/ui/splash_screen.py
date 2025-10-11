@@ -502,38 +502,26 @@ class SplashScreen(QWidget):
         self.hold_timer = None
         
     def _load_background_sequence(self):
-        """Load all background PNG frames from sequence folder"""
+        """Load first background frame immediately, then load rest asynchronously"""
         png_folder = config.get("PNG_SEQUENCE_FOLDER", "assets/animations/Starting_Animation")
-        frames_path = Path(__file__).parent.parent.parent / png_folder
+        self.frames_path = Path(__file__).parent.parent.parent / png_folder
         
-        if not frames_path.exists():
-            print(f"Warning: Background PNG sequence folder not found: {frames_path}")
+        if not self.frames_path.exists():
+            print(f"Warning: Background PNG sequence folder not found: {self.frames_path}")
             return
         
-        print(f"Loading background PNG sequence from: {frames_path}")
+        print(f"Loading background PNG sequence from: {self.frames_path}")
         
-        # Load frames: Starting_Animation_00000.png to Starting_Animation_00300.png
-        loaded_count = 0
-        for i in range(0, self.BG_TOTAL_FRAMES):
-            frame_file = frames_path / f"Starting_Animation_{i:05d}.png"
+        # OPTIMIZATION: Load ONLY first frame immediately for instant display
+        first_frame_file = self.frames_path / f"Starting_Animation_00000.png"
+        
+        if first_frame_file.exists():
+            pixmap = QPixmap(str(first_frame_file))
+            self.bg_frames.append(pixmap)
             
-            if frame_file.exists():
-                # Use original image size (no scaling)
-                pixmap = QPixmap(str(frame_file))
-                self.bg_frames.append(pixmap)
-                loaded_count += 1
-            else:
-                empty_pixmap = QPixmap(self.background_label.size())
-                empty_pixmap.fill(Qt.transparent)
-                self.bg_frames.append(empty_pixmap)
-        
-        print(f"Loaded {loaded_count}/{self.BG_TOTAL_FRAMES} background PNG frames")
-        
-        # Display first frame and position background label to center in window
-        if self.bg_frames and not self.bg_frames[0].isNull():
-            first_frame = self.bg_frames[0]
-            bg_width = first_frame.width()
-            bg_height = first_frame.height()
+            # Display first frame immediately
+            bg_width = pixmap.width()
+            bg_height = pixmap.height()
             
             # Get window dimensions
             width = config.get("SPLASH_WINDOW_WIDTH", 700)
@@ -544,42 +532,67 @@ class SplashScreen(QWidget):
             bg_y = (height - bg_height) // 2
             
             self.background_label.setGeometry(bg_x, bg_y, bg_width, bg_height)
-            self.background_label.setPixmap(first_frame)
+            self.background_label.setPixmap(pixmap)
             print(f"Background size: {bg_width}x{bg_height}, position: ({bg_x}, {bg_y})")
-    
-    def _load_spin_sequence(self):
-        """Load all spin overlay PNG frames from sequence folder"""
-        spin_folder = config.get("SPIN_SEQUENCE_FOLDER", "assets/animations/Spin")
-        frames_path = Path(__file__).parent.parent.parent / spin_folder
+            print(f"Loaded first frame (1/{self.BG_TOTAL_FRAMES}) - loading rest in background...")
+        else:
+            print(f"Error: First frame not found: {first_frame_file}")
         
-        if not frames_path.exists():
-            print(f"Warning: Spin PNG sequence folder not found: {frames_path}")
+        # Schedule async loading of remaining frames
+        self._bg_frames_loaded = False
+        self._loading_frame_index = 1  # Start from second frame
+        
+    def _load_remaining_frames_async(self):
+        """Load remaining background frames in batches to avoid blocking"""
+        if self._bg_frames_loaded:
             return
         
-        print(f"Loading spin PNG sequence from: {frames_path}")
+        # Load frames in batches of 10 to avoid blocking UI
+        BATCH_SIZE = 10
+        batch_end = min(self._loading_frame_index + BATCH_SIZE, self.BG_TOTAL_FRAMES)
         
-        # Load frames: Spin_00000.png to Spin_00059.png
-        loaded_count = 0
-        for i in range(0, self.SPIN_TOTAL_FRAMES):
-            frame_file = frames_path / f"Spin_{i:05d}.png"
+        for i in range(self._loading_frame_index, batch_end):
+            frame_file = self.frames_path / f"Starting_Animation_{i:05d}.png"
             
             if frame_file.exists():
-                # Use original image size (no scaling)
                 pixmap = QPixmap(str(frame_file))
-                self.spin_frames.append(pixmap)
-                loaded_count += 1
+                self.bg_frames.append(pixmap)
             else:
-                empty_pixmap = QPixmap(400, 400)  # Default size if image not found
+                empty_pixmap = QPixmap(self.background_label.size())
                 empty_pixmap.fill(Qt.transparent)
-                self.spin_frames.append(empty_pixmap)
+                self.bg_frames.append(empty_pixmap)
         
-        print(f"Loaded {loaded_count}/{self.SPIN_TOTAL_FRAMES} spin PNG frames")
+        self._loading_frame_index = batch_end
         
-        # Display first frame and resize/position spin label to match image size
-        if self.spin_frames and not self.spin_frames[0].isNull():
-            first_frame = self.spin_frames[0]
-            spin_width = first_frame.width()
-            spin_height = first_frame.height()
+        # Check if all frames loaded
+        if self._loading_frame_index >= self.BG_TOTAL_FRAMES:
+            self._bg_frames_loaded = True
+            print(f"Background frames fully loaded: {len(self.bg_frames)}/{self.BG_TOTAL_FRAMES}")
+        else:
+            # Schedule next batch
+            QTimer.singleShot(10, self._load_remaining_frames_async)
+    
+    def _load_spin_sequence(self):
+        """Load first spin frame immediately, then load rest asynchronously"""
+        spin_folder = config.get("SPIN_SEQUENCE_FOLDER", "assets/animations/Spin")
+        self.spin_frames_path = Path(__file__).parent.parent.parent / spin_folder
+        
+        if not self.spin_frames_path.exists():
+            print(f"Warning: Spin PNG sequence folder not found: {self.spin_frames_path}")
+            return
+        
+        print(f"Loading spin PNG sequence from: {self.spin_frames_path}")
+        
+        # OPTIMIZATION: Load ONLY first frame immediately
+        first_spin_file = self.spin_frames_path / f"Spin_00000.png"
+        
+        if first_spin_file.exists():
+            pixmap = QPixmap(str(first_spin_file))
+            self.spin_frames.append(pixmap)
+            
+            # Display first frame and resize/position spin label
+            spin_width = pixmap.width()
+            spin_height = pixmap.height()
             
             # Get window dimensions
             width = config.get("SPLASH_WINDOW_WIDTH", 700)
@@ -590,8 +603,45 @@ class SplashScreen(QWidget):
             spin_y = (height - spin_height) // 2
             
             self.spin_label.setGeometry(spin_x, spin_y, spin_width, spin_height)
-            self.spin_label.setPixmap(first_frame)
+            self.spin_label.setPixmap(pixmap)
             print(f"Spin size: {spin_width}x{spin_height}")
+            print(f"Loaded first spin frame (1/{self.SPIN_TOTAL_FRAMES}) - loading rest in background...")
+        else:
+            print(f"Error: First spin frame not found: {first_spin_file}")
+        
+        # Schedule async loading of remaining spin frames
+        self._spin_frames_loaded = False
+        self._loading_spin_index = 1  # Start from second frame
+        
+    def _load_remaining_spin_frames_async(self):
+        """Load remaining spin frames in batches to avoid blocking"""
+        if self._spin_frames_loaded:
+            return
+        
+        # Load frames in batches of 10
+        BATCH_SIZE = 10
+        batch_end = min(self._loading_spin_index + BATCH_SIZE, self.SPIN_TOTAL_FRAMES)
+        
+        for i in range(self._loading_spin_index, batch_end):
+            frame_file = self.spin_frames_path / f"Spin_{i:05d}.png"
+            
+            if frame_file.exists():
+                pixmap = QPixmap(str(frame_file))
+                self.spin_frames.append(pixmap)
+            else:
+                empty_pixmap = QPixmap(400, 400)
+                empty_pixmap.fill(Qt.transparent)
+                self.spin_frames.append(empty_pixmap)
+        
+        self._loading_spin_index = batch_end
+        
+        # Check if all frames loaded
+        if self._loading_spin_index >= self.SPIN_TOTAL_FRAMES:
+            self._spin_frames_loaded = True
+            print(f"Spin frames fully loaded: {len(self.spin_frames)}/{self.SPIN_TOTAL_FRAMES}")
+        else:
+            # Schedule next batch
+            QTimer.singleShot(10, self._load_remaining_spin_frames_async)
         
     def _center_on_screen(self):
         """Center window on screen"""
@@ -604,6 +654,10 @@ class SplashScreen(QWidget):
         """Start initialization and animation with 1 second delay at first frame"""
         # Show first frame for 1 second before starting
         self.log_label.setText("Starting initialization...")
+        
+        # Start async loading of remaining frames in background
+        QTimer.singleShot(50, self._load_remaining_frames_async)
+        QTimer.singleShot(50, self._load_remaining_spin_frames_async)
         
         # Start spin animation immediately
         if self.spin_frames:
@@ -632,6 +686,9 @@ class SplashScreen(QWidget):
         target_frame = int((percent / 100.0) * (self.BG_TOTAL_FRAMES - 1))
         target_frame = min(target_frame, self.BG_TOTAL_FRAMES - 1)
         
+        # SAFETY: Only use frames that have been loaded
+        target_frame = min(target_frame, len(self.bg_frames) - 1)
+        
         # Smooth transition: gradually move to target frame instead of jumping
         if not hasattr(self, '_last_target_frame'):
             self._last_target_frame = 0
@@ -649,16 +706,19 @@ class SplashScreen(QWidget):
         else:
             # Small jump, update directly
             self.current_bg_frame = target_frame
-            self.background_label.setPixmap(self.bg_frames[self.current_bg_frame])
+            if self.current_bg_frame < len(self.bg_frames):
+                self.background_label.setPixmap(self.bg_frames[self.current_bg_frame])
             self._last_target_frame = target_frame
         
-        print(f"Progress: {percent}% -> Frame {target_frame}/{self.BG_TOTAL_FRAMES-1}")
+        print(f"Progress: {percent}% -> Frame {target_frame}/{self.BG_TOTAL_FRAMES-1} (loaded: {len(self.bg_frames)})")
     
     def _animate_to_target(self):
         """Smoothly animate background frames to target"""
         if self.current_bg_frame < self._target_frame:
             self.current_bg_frame += 1
-            self.background_label.setPixmap(self.bg_frames[self.current_bg_frame])
+            # SAFETY: Only use frames that have been loaded
+            if self.current_bg_frame < len(self.bg_frames):
+                self.background_label.setPixmap(self.bg_frames[self.current_bg_frame])
         else:
             # Reached target, stop animation
             self._smooth_animation_timer.stop()
@@ -671,12 +731,18 @@ class SplashScreen(QWidget):
         
         self.current_spin_frame += 1
         
-        # Loop back to start when reaching the end
+        # SAFETY: Loop back or wait for more frames to load
         if self.current_spin_frame >= len(self.spin_frames):
-            self.current_spin_frame = 0
+            if self._spin_frames_loaded:
+                # All frames loaded, loop back to start
+                self.current_spin_frame = 0
+            else:
+                # Still loading, wait at last available frame
+                self.current_spin_frame = len(self.spin_frames) - 1
         
         # Display current spin frame
-        self.spin_label.setPixmap(self.spin_frames[self.current_spin_frame])
+        if self.current_spin_frame < len(self.spin_frames):
+            self.spin_label.setPixmap(self.spin_frames[self.current_spin_frame])
     
     def _hold_last_frame(self):
         """Hold the last frame for HOLD_DURATION milliseconds"""
