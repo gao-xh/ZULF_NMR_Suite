@@ -333,13 +333,16 @@ class StartupDialog(QDialog):
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
             
-            # Show configuration controls when MATLAB is not available or first run
+            # Show MATLAB configuration controls when MATLAB is not available or first run
             if first_run or not matlab_available:
                 self.matlab_config_container.setVisible(True)
-                self.spinach_config_container.setVisible(True)
                 self.matlab_path_input.setEnabled(True)
                 self.browse_matlab_btn.setEnabled(True)
                 self.configure_matlab_btn.setEnabled(True)
+                
+                # Only show Spinach config if Spinach is NOT ready
+                # If Spinach is already installed, no need to configure it
+                self.spinach_config_container.setVisible(not spinach_ready)
         
         # Update Python status based on Spinach availability
         if python_available:
@@ -347,9 +350,9 @@ class StartupDialog(QDialog):
                 self.python_status.setText("[i] Available as fallback")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
             elif spinach_ready and not matlab_available:
-                # Spinach is ready but MATLAB engine failed
-                self.python_status.setText("[CONFIG] Embedded Spinach configuration requested")
-                self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
+                # Spinach is ready but MATLAB engine failed - this is OK, just need to configure MATLAB
+                self.python_status.setText("[OK] Embedded Spinach ready (configure MATLAB to use it)")
+                self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
             else:
                 self.python_status.setText("[OK] Will be used for simulations")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
