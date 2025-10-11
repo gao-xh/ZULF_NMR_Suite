@@ -145,13 +145,36 @@ def apply_user_config(startup_config):
                 if result.returncode == 0:
                     print("[OK] MATLAB Engine installed successfully!")
                     
-                    # Detect MATLAB version
+                    # Detect MATLAB version from path
                     matlab_version = None
-                    parts = Path(matlab_path).parts
+                    matlab_path_obj = Path(matlab_path)
+                    
+                    # Method 1: Look for version in path parts (e.g., R2021a, R2025b)
+                    parts = matlab_path_obj.parts
                     for part in parts:
                         if part.startswith('R20'):  # R2021a, R2025a, etc.
                             matlab_version = part
                             break
+                    
+                    # Method 2: If no version in path, check VersionInfo.xml
+                    if not matlab_version:
+                        version_info_file = matlab_path_obj / "VersionInfo.xml"
+                        if version_info_file.exists():
+                            try:
+                                import xml.etree.ElementTree as ET
+                                tree = ET.parse(version_info_file)
+                                root = tree.getroot()
+                                release = root.find('.//release')
+                                if release is not None and release.text:
+                                    matlab_version = release.text.strip()
+                                    print(f"Detected MATLAB version from VersionInfo.xml: {matlab_version}")
+                            except Exception as e:
+                                print(f"Could not read VersionInfo.xml: {e}")
+                    
+                    # Method 3: Fallback to generic version
+                    if not matlab_version:
+                        matlab_version = "Unknown"
+                        print("Warning: Could not detect MATLAB version, using 'Unknown'")
                     
                     # Save MATLAB configuration
                     user_config.set_matlab_config(
