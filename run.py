@@ -241,25 +241,37 @@ def main():
             # Get initialization results from splash screen worker
             init_results = splash.worker.get_init_results() if splash.worker else {}
             
-            # Check if this is first run (MATLAB not configured)
+            # Check if this is first run or MATLAB not configured
             from src.utils.user_config import get_user_config
             user_config = get_user_config()
             matlab_configured = user_config.data.get('matlab', {}).get('configured', False)
-            first_run = init_results.get('first_run', False)
             
-            # Auto-configure on first run or if MATLAB not configured
-            if first_run or not matlab_configured:
-                print("\nDetected first run or unconfigured MATLAB - starting auto-configuration...")
-                from src.utils.first_run_setup import auto_configure_first_run
-                auto_results = auto_configure_first_run()
+            # Auto-detect MATLAB if not configured
+            if not matlab_configured or not init_results.get('matlab_available', False):
+                print("\nAuto-detecting MATLAB installation...")
+                from src.utils.first_run_setup import auto_detect_matlab
+                detected_matlab = auto_detect_matlab()
                 
-                # Update init_results with auto-configuration results
-                init_results['matlab_available'] = auto_results.get('matlab_engine_installed', False)
-                init_results['spinach_ready'] = auto_results.get('spinach_ready', False)
-                
-                # If MATLAB was successfully configured, mark as first_run complete
-                if auto_results.get('matlab_engine_installed'):
-                    user_config.mark_first_run_complete()
+                if detected_matlab:
+                    print(f"  ✓ Found MATLAB: {detected_matlab}")
+                    # Add detected MATLAB path to init_results for dialog to use
+                    init_results['detected_matlab_path'] = str(detected_matlab)
+                    
+                    # Try to get version
+                    version_info_file = detected_matlab / "VersionInfo.xml"
+                    if version_info_file.exists():
+                        try:
+                            import xml.etree.ElementTree as ET
+                            tree = ET.parse(version_info_file)
+                            root = tree.getroot()
+                            release = root.find('.//release')
+                            if release is not None and release.text:
+                                init_results['detected_matlab_version'] = release.text.strip()
+                                print(f"  ✓ Version: {init_results['detected_matlab_version']}")
+                        except Exception:
+                            pass
+                else:
+                    print("  ✗ MATLAB not found - you can manually specify the path or use Pure Python mode")
             
             # Show startup configuration dialog
             from src.ui.startup_dialog import StartupDialog

@@ -317,6 +317,8 @@ class StartupDialog(QDialog):
         network_available = self.init_results.get('network_available', False)
         first_run = self.init_results.get('first_run', False)
         spinach_ready = self.init_results.get('spinach_ready', False)
+        detected_matlab_path = self.init_results.get('detected_matlab_path', None)
+        detected_matlab_version = self.init_results.get('detected_matlab_version', None)
         
         # Update MATLAB status
         if matlab_available:
@@ -328,21 +330,30 @@ class StartupDialog(QDialog):
             self.matlab_config_container.setVisible(False)
             self.spinach_config_container.setVisible(False)
         else:
-            self.matlab_status.setText("[CONFIG] MATLAB engine configuration requested")
-            self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
+            # MATLAB not available - show configuration options
+            if detected_matlab_path:
+                # MATLAB detected but engine not installed
+                version_text = f" ({detected_matlab_version})" if detected_matlab_version else ""
+                self.matlab_status.setText(f"[DETECTED] MATLAB found{version_text} - click Configure to install engine")
+                self.matlab_status.setStyleSheet("margin-left: 20px; color: blue; font-size: 9pt;")
+                # Pre-fill the detected path
+                self.matlab_path_input.setText(detected_matlab_path)
+            else:
+                # MATLAB not detected - user needs to provide path
+                self.matlab_status.setText("[!] MATLAB not found - enter path manually or skip")
+                self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
+            
             self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
             
-            # Show MATLAB configuration controls when MATLAB is not available or first run
-            if first_run or not matlab_available:
-                self.matlab_config_container.setVisible(True)
-                self.matlab_path_input.setEnabled(True)
-                self.browse_matlab_btn.setEnabled(True)
-                self.configure_matlab_btn.setEnabled(True)
-                
-                # Only show Spinach config if Spinach is NOT ready
-                # If Spinach is already installed, no need to configure it
-                self.spinach_config_container.setVisible(not spinach_ready)
+            # Show MATLAB configuration controls
+            self.matlab_config_container.setVisible(True)
+            self.matlab_path_input.setEnabled(True)
+            self.browse_matlab_btn.setEnabled(True)
+            self.configure_matlab_btn.setEnabled(True)
+            
+            # Only show Spinach config if Spinach is NOT ready
+            self.spinach_config_container.setVisible(not spinach_ready)
         
         # Update Python status based on Spinach availability
         if python_available:
