@@ -2,7 +2,7 @@
 Main Application Window - ZULF-NMR Suite
 
 This is the main container that hosts different functional modules:
-- NMR Simulation (Multi-system Spinach)
+- ZULF-NMR Simulation (Multi-system Spinach)
 - Experimental Data Processing
 - Future modules...
 
@@ -103,7 +103,7 @@ class MainApplication(QMainWindow):
     def _load_modules(self):
         """Load all functional modules as tabs"""
         
-        # Tab 1: NMR Simulation Module
+        # Tab 1: ZULF-NMR Simulation Module
         try:
             from src.simulation.ui.simulation_window import MultiSystemSpinachUI
             
@@ -118,7 +118,7 @@ class MainApplication(QMainWindow):
             
             simulation_widget = MultiSystemSpinachUI(startup_config=sim_config)
             simulation_widget.setParent(self)
-            self.tab_widget.addTab(simulation_widget, "NMR Simulation")
+            self.tab_widget.addTab(simulation_widget, "Simulation")
             self.statusBar().showMessage("Simulation module loaded", 3000)
             
         except Exception as e:
@@ -127,7 +127,7 @@ class MainApplication(QMainWindow):
             error_label = QLabel(f"Failed to load simulation module:\n{str(e)}")
             error_label.setAlignment(Qt.AlignCenter)
             error_layout.addWidget(error_label)
-            self.tab_widget.addTab(error_widget, "NMR Simulation (Error)")
+            self.tab_widget.addTab(error_widget, "ZULF-NMR Simulation (Error)")
             print(f"Error loading simulation module: {e}")
             import traceback
             traceback.print_exc()
