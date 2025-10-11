@@ -14,7 +14,8 @@ APP_DESCRIPTION = Advanced ZULF-NMR simulation and data processing suite
 APP_USER_MODEL_ID = AjoyLab.ZULFNMRSuite.Application.0.1
 
 # Python Environment
-PYTHON_ENV_PATH = D:/anaconda3/envs/matlab312/python.exe
+# Use embedded Python environment instead of conda
+PYTHON_ENV_PATH = environments/python/python.exe
 
 # Dependencies
 PYSIDE6_VERSION = 6.7.3
