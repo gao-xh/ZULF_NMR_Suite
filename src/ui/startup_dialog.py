@@ -320,11 +320,14 @@ class StartupDialog(QDialog):
         detected_matlab_path = self.init_results.get('detected_matlab_path', None)
         detected_matlab_version = self.init_results.get('detected_matlab_version', None)
         
+        # MATLAB checkbox is always enabled so user can choose
+        self.use_matlab_checkbox.setEnabled(True)
+        
         # Update MATLAB status
         if matlab_available:
+            # MATLAB is ready - show status and allow user to disable if desired
             self.matlab_status.setText("[OK] MATLAB engine initialized and ready")
             self.matlab_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
-            self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
             # Hide configuration controls when MATLAB is working
             self.matlab_config_container.setVisible(False)
@@ -340,10 +343,9 @@ class StartupDialog(QDialog):
                 self.matlab_path_input.setText(detected_matlab_path)
             else:
                 # MATLAB not detected - user needs to provide path
-                self.matlab_status.setText("[!] MATLAB not found - enter path manually or skip")
+                self.matlab_status.setText("[!] MATLAB not found - enter path manually or uncheck to use Pure Python")
                 self.matlab_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
             
-            self.use_matlab_checkbox.setEnabled(True)
             self.use_matlab_checkbox.setChecked(True)
             
             # Show MATLAB configuration controls
@@ -355,16 +357,18 @@ class StartupDialog(QDialog):
             # Only show Spinach config if Spinach is NOT ready
             self.spinach_config_container.setVisible(not spinach_ready)
         
-        # Update Python status based on Spinach availability
+        # Update Python status based on current selection
         if python_available:
-            if matlab_available and self.use_matlab_checkbox.isChecked():
-                self.python_status.setText("[i] Available as fallback")
+            if self.use_matlab_checkbox.isChecked() and matlab_available:
+                # MATLAB is selected and available
+                self.python_status.setText("[i] Available as fallback if you uncheck MATLAB")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
             elif spinach_ready and not matlab_available:
-                # Spinach is ready but MATLAB engine failed - this is OK, just need to configure MATLAB
+                # Spinach is ready but MATLAB engine not installed
                 self.python_status.setText("[OK] Embedded Spinach ready (configure MATLAB to use it)")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
             else:
+                # Pure Python will be used
                 self.python_status.setText("[OK] Will be used for simulations")
                 self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
         else:
@@ -395,13 +399,23 @@ class StartupDialog(QDialog):
         
         # Update Python status display
         python_available = self.init_results.get('python_simulation_available', True)
+        matlab_available = self.init_results.get('matlab_available', False)
+        
         if python_available:
-            if checked:
-                self.python_status.setText("[i] Available as fallback")
+            if checked and matlab_available:
+                # User wants MATLAB and it's available
+                self.python_status.setText("[i] Available as fallback if you uncheck MATLAB")
                 self.python_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
+            elif checked and not matlab_available:
+                # User wants MATLAB but it's not available
+                self.python_status.setText("[i] Configure MATLAB first to use it")
+                self.python_status.setStyleSheet("margin-left: 20px; color: orange; font-size: 9pt;")
             else:
-                self.python_status.setText("[OK] Will be used for simulations")
-                self.python_status.setStyleSheet("margin-left: 20px; color: green; font-size: 9pt;")
+                # User chose Pure Python mode
+                self.python_status.setText("[OK] Pure Python Mode - Will be used for simulations")
+                self.python_status.setStyleSheet("margin-left: 20px; color: green; font-weight: bold; font-size: 9pt;")
+                self.matlab_status.setText("[i] MATLAB disabled by user choice")
+                self.matlab_status.setStyleSheet("margin-left: 20px; color: gray; font-size: 9pt;")
         
         self._update_status_message()
     
