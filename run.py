@@ -9,69 +9,21 @@ import sys
 import os
 import subprocess
 from pathlib import Path
-from PySide6.QtWidgets import QApplication, QMessageBox, QDialog
 
-# Windows-specific: Set App User Model ID for taskbar icon
-# This must be done BEFORE creating QApplication and importing Qt
-# Works on both 32-bit and 64-bit Windows
-if sys.platform.startswith('win'):
-    try:
-        import ctypes
-        # Import config to get APP_USER_MODEL_ID
-        # We need to do a minimal import before full Qt initialization
-        config_file = Path(__file__).parent / 'config.txt'
-        app_id = 'AjoyLab.ZULFNMRSuite.Application.0.1'  # Default fallback
-        
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith('APP_USER_MODEL_ID'):
-                        parts = line.split('=', 1)
-                        if len(parts) == 2:
-                            app_id = parts[1].strip()
-                            break
-        
-        # Set App User Model ID for Windows taskbar
-        # This works on both win32 and win64
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-        print(f"Windows App ID set: {app_id}")
-    except Exception as e:
-        print(f"Warning: Could not set App User Model ID: {e}")
-        print("Taskbar icon may show default Python icon")
-
-# CRITICAL: Clear Qt plugin paths BEFORE any Qt imports
-# This prevents conflicts between conda's PyQt5 and our PySide6
-os.environ.pop('QT_PLUGIN_PATH', None)
-os.environ.pop('QT_QPA_PLATFORM_PLUGIN_PATH', None)
-os.environ.pop('QML_IMPORT_PATH', None)
-os.environ.pop('QML2_IMPORT_PATH', None)
-
-# Disable hardware video acceleration to prevent buffer pool issues
-# Force software decoding for video playback
-os.environ['QT_OPENGL'] = 'software'
-os.environ['QT_D3D11_ADAPTER'] = '-1'
-os.environ['QT_ANGLE_PLATFORM'] = 'software'
-os.environ['LIBVA_DRIVER_NAME'] = 'i965'
-
-# Force PySide6 to use its own Qt libraries
-# Get PySide6 installation path and set Qt plugin path explicitly
-try:
-    import PySide6
-    pyside6_path = Path(PySide6.__file__).parent
-    plugins_path = pyside6_path / "Qt" / "plugins"
-    if plugins_path.exists():
-        os.environ['QT_PLUGIN_PATH'] = str(plugins_path)
-except Exception as e:
-    pass  # If we can't set it, let PySide6 use defaults
-
-from PySide6.QtWidgets import QApplication, QMessageBox, QDialog
-
-# CRITICAL: Add project root to Python path BEFORE importing any src modules
-# This is especially important for embedded Python which has different sys.path[0]
+# CRITICAL: Setup platform-specific environment BEFORE any imports
+# This must be done before importing PySide6 to avoid Qt conflicts
 PROJECT_ROOT = Path(__file__).parent.absolute()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+# Import platform setup utilities
+from src.utils.platform_setup import setup_platform_specific
+
+# Configure Windows App ID, Qt environment, hardware acceleration
+setup_platform_specific()
+
+# NOW safe to import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox, QDialog
 
 # Import configuration
 from src.utils.config import config
@@ -174,6 +126,9 @@ def verify_dependencies():
 def main():
     """Main entry point with environment setup and splash screen"""
     
+    import os
+    print(f"[DEBUG] Process ID: {os.getpid()}")
+    
     print("=" * 60)
     print(config.app_name)
     print(config.app_full_version)
@@ -236,173 +191,30 @@ def main():
     
     # Variable to hold main window
     main_window = None
-    startup_config = None
+    splash_closed_handled = False  # Prevent duplicate handling
     
     def on_splash_closed():
-        """Called when splash screen closes"""
-        nonlocal main_window, startup_config
+        """Called when splash screen closes - delegate to startup coordinator"""
+        nonlocal main_window, splash_closed_handled
         
-        print("\n[DEBUG] on_splash_closed() called")
-        print(f"[DEBUG] init_success: {splash.init_success}")
+        import traceback
+        print(f"\n{'='*60}")
+        print(f"[TRACE] on_splash_closed() ENTRY in run.py")
+        print(f"[TRACE] splash_closed_handled={splash_closed_handled}")
+        print(f"[TRACE] Stack trace:")
+        for line in traceback.format_stack()[:-1]:
+            print(line.strip())
+        print(f"{'='*60}\n")
         
-        if splash.init_success:
-            # Get initialization results from splash screen worker
-            init_results = splash.worker.get_init_results() if splash.worker else {}
-            
-            print(f"[DEBUG] init_results: {init_results}")
-            
-            # Check MATLAB status from splash screen initialization
-            matlab_available = init_results.get('matlab_available', False)
-            matlab_has_issues = init_results.get('matlab_has_issues', False)
-            
-            if matlab_available:
-                print("[INFO] MATLAB engine started successfully during initialization")
-            else:
-                print("[INFO] MATLAB engine not available")
-                if matlab_has_issues:
-                    matlab_error = init_results.get('matlab_error', 'Unknown error')
-                    print(f"[WARN] MATLAB issues detected: {matlab_error}")
-            
-            # Auto-detect MATLAB installation path for display purposes
-            from src.utils.first_run_setup import auto_detect_matlab
-            detected_matlab = auto_detect_matlab()
-            
-            if detected_matlab:
-                print(f"[INFO] Detected MATLAB at: {detected_matlab}")
-                init_results['detected_matlab_path'] = str(detected_matlab)
-                
-                # Try to get version
-                version_info_file = detected_matlab / "VersionInfo.xml"
-                if version_info_file.exists():
-                    try:
-                        import xml.etree.ElementTree as ET
-                        tree = ET.parse(version_info_file)
-                        root = tree.getroot()
-                        release = root.find('.//release')
-                        if release is not None and release.text:
-                            init_results['detected_matlab_version'] = release.text.strip()
-                            print(f"[INFO] MATLAB Version: {init_results['detected_matlab_version']}")
-                    except Exception:
-                        pass
-            
-            # Decide which dialog to show based on MATLAB status
-            if matlab_has_issues:
-                # MATLAB has problems - show CONFIGURATION dialog
-                # This allows user to configure/fix MATLAB or choose Pure Python
-                print("[INFO] MATLAB has issues - showing configuration dialog")
-                from src.ui.startup_dialog import StartupDialog
-                
-                # Use StartupDialog but in "configuration mode"
-                # The dialog will show different UI based on matlab_has_issues flag
-                startup_dialog = StartupDialog(init_results)
-                startup_dialog.setWindowTitle("Configuration Required - MATLAB Unavailable")
-            else:
-                # MATLAB is OK (or not needed) - show SELECTION dialog
-                # User can choose between MATLAB/Pure Python and Local/Cloud
-                print("[INFO] Showing startup selection dialog")
-                from src.ui.startup_dialog import StartupDialog
-                
-                startup_dialog = StartupDialog(init_results)
-                startup_dialog.setWindowTitle("Select Execution Mode")
-            
-            print(f"[DEBUG] StartupDialog created, showing...")
-            startup_dialog.show()
-            startup_dialog.raise_()
-            startup_dialog.activateWindow()
-            
-            print(f"[DEBUG] Executing dialog...")
-            result = startup_dialog.exec()
-            print(f"[DEBUG] Dialog result: {result}")
-            
-            if result == QDialog.Accepted:
-                # User accepted, get configuration
-                startup_config = startup_dialog.get_config()
-                
-                print(f"[DEBUG] User selected config: {startup_config}")
-
-                # Check if user chose MATLAB mode
-                use_matlab = startup_config.get('use_matlab', False)
-                
-                if use_matlab and not matlab_available:
-                    # User wants MATLAB but it wasn't started successfully
-                    # Need to apply configuration (install MATLAB Engine, etc.)
-                    print("[INFO] User chose MATLAB but engine not ready - applying configuration...")
-                    from src.utils.first_run_setup import apply_user_config
-                    config_results = apply_user_config(startup_config)
-                    
-                    # Check if restart is needed
-                    if config_results.get('needs_restart', False):
-                        from PySide6.QtWidgets import QMessageBox
-                        
-                        msg = QMessageBox()
-                        msg.setIcon(QMessageBox.Information)
-                        msg.setWindowTitle("Configuration Complete - Restart Required")
-                        msg.setText("<h3>MATLAB Engine Configured Successfully!</h3>")
-                        msg.setInformativeText(
-                            "<p>MATLAB Engine has been installed to the embedded Python environment.</p>"
-                            "<p><b>Please restart the application</b> to use MATLAB Spinach engine.</p>"
-                            "<p>Configuration saved to: <code>user_config.json</code></p>"
-                        )
-                        msg.setStandardButtons(QMessageBox.Ok)
-                        msg.setDefaultButton(QMessageBox.Ok)
-                        msg.exec()
-                        
-                        # Exit the application
-                        print("\n" + "="*60)
-                        print("CONFIGURATION COMPLETE - PLEASE RESTART APPLICATION")
-                        print("="*60)
-                        print("\nRun start.bat again to start with MATLAB Spinach engine.")
-                        sys.exit(0)
-                
-                elif use_matlab and matlab_available:
-                    # User chose MATLAB and engine is already started
-                    # Just use the existing engine from splash screen
-                    print("[INFO] Using MATLAB engine from initialization")
-                    # Engine is already stored in global ENGINE manager by splash screen
-                    
-                else:
-                    # User chose Pure Python mode
-                    print("[INFO] User chose Pure Python mode")
-                    # If MATLAB engine was started, we should clean it up
-                    if matlab_available and splash.worker and hasattr(splash.worker, 'engine_cm'):
-                        try:
-                            print("[INFO] Cleaning up MATLAB engine...")
-                            splash.worker.engine_cm.__exit__(None, None, None)
-                        except:
-                            pass
-                
-                # Save user's choice to config
-                from src.utils.user_config import get_user_config
-                user_config = get_user_config()
-                user_config.data['preferences'] = {
-                    'use_matlab': use_matlab,
-                    'execution_mode': startup_config.get('execution_mode', 'local')
-                }
-                user_config.data['first_run_completed'] = True
-                user_config.save()
-                print(f"[INFO] Configuration saved: use_matlab={use_matlab}")
-
-                # Start main application (tab-based container)
-                from main_application import MainApplication
-                main_window = MainApplication(startup_config=startup_config)
-
-                main_window.show()
-                # Bring window to front and activate it
-                main_window.raise_()
-                main_window.activateWindow()
-            else:
-                # User cancelled, exit application
-                print("User cancelled startup configuration")
-                app.quit()
-        else:
-            # Show error and exit
-            QMessageBox.critical(
-                None,
-                "Initialization Failed",
-                "Failed to initialize application.\n"
-                "Please check the error messages in the console."
-            )
-            app.quit()
+        # Prevent duplicate calls
+        if splash_closed_handled:
+            print("[CRITICAL] on_splash_closed() already handled, BLOCKING duplicate!")
+            return
+        splash_closed_handled = True
+        print("[OK] First call to on_splash_closed(), proceeding...")
+        
+        from src.utils.startup_coordinator import handle_splash_completion
+        main_window = handle_splash_completion(splash, app)
     
     # Connect splash closed signal
     splash.closed.connect(on_splash_closed)

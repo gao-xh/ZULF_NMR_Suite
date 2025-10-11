@@ -1,84 +1,22 @@
 """
 First-Run Setup Check
 
-Detects if this is the first time running and offers to configure:
-- Embedded Python
-- Spinach + MATLAB
+DEPRECATED: This module is being refactored into smaller modules.
+Please use the following modules instead:
+- matlab_detector.py: MATLAB detection functions
+- matlab_installer.py: MATLAB Engine installation functions
+- config_applier.py: Configuration application functions
+
+This file now serves as a compatibility wrapper.
 """
 
 import sys
 import subprocess
 from pathlib import Path
 
-
-def auto_detect_matlab():
-    """
-    Automatically detect MATLAB installation on Windows.
-    
-    Returns:
-        Path or None: Path to MATLAB installation directory if found
-    """
-    import os
-    
-    # Common MATLAB installation paths
-    common_paths = [
-        r"C:\Program Files\MATLAB",
-        r"C:\Program Files (x86)\MATLAB",
-        r"D:\MATLAB",
-        r"E:\MATLAB",
-        r"F:\MATLAB",
-        r"C:\MATLAB"
-    ]
-    
-    matlab_installations = []
-    
-    # Method 1: Check common installation directories
-    for base_path in common_paths:
-        base = Path(base_path)
-        if base.exists():
-            # Check if it's a direct MATLAB installation (has bin/matlab.exe)
-            if (base / "bin" / "matlab.exe").exists():
-                matlab_installations.append(base)
-            else:
-                # Check subdirectories for version folders (R2024a, R2023b, etc.)
-                try:
-                    for subdir in base.iterdir():
-                        if subdir.is_dir() and (subdir / "bin" / "matlab.exe").exists():
-                            matlab_installations.append(subdir)
-                except PermissionError:
-                    continue
-    
-    # Method 2: Check Windows registry
-    try:
-        import winreg
-        reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\MathWorks\MATLAB", 0, winreg.KEY_READ)
-        try:
-            i = 0
-            while True:
-                try:
-                    version_key_name = winreg.EnumKey(reg_key, i)
-                    version_key = winreg.OpenKey(reg_key, version_key_name)
-                    matlab_root, _ = winreg.QueryValueEx(version_key, "MATLABROOT")
-                    winreg.CloseKey(version_key)
-                    
-                    matlab_path = Path(matlab_root)
-                    if matlab_path.exists() and matlab_path not in matlab_installations:
-                        matlab_installations.append(matlab_path)
-                    i += 1
-                except OSError:
-                    break
-        finally:
-            winreg.CloseKey(reg_key)
-    except (ImportError, FileNotFoundError, OSError):
-        pass
-    
-    # Return the newest version (last in sorted list)
-    if matlab_installations:
-        # Sort by directory name (R2024a > R2023b > R2021a)
-        matlab_installations.sort(key=lambda p: p.name, reverse=True)
-        return matlab_installations[0]
-    
-    return None
+# Import from new modular structure
+from .matlab_detector import auto_detect_matlab
+from .config_applier import apply_user_config
 
 
 def auto_configure_first_run():
@@ -298,151 +236,7 @@ def show_first_run_dialog():
         return 'skip'
 
 
-def apply_user_config(startup_config):
-    """
-    Apply user configuration from startup dialog.
-    
-    Args:
-        startup_config: Dictionary from StartupDialog.get_config()
-        
-    Returns:
-        dict: Configuration results {
-            'needs_restart': bool,  # True if user needs to restart the application
-            'matlab_engine_installed': bool  # True if MATLAB Engine was just installed
-        }
-    """
-    import subprocess
-    from .user_config import get_user_config
-    
-    workspace_root = Path(__file__).parent.parent.parent
-    user_config = get_user_config()
-    
-    results = {
-        'needs_restart': False,
-        'matlab_engine_installed': False
-    }
-    
-    # Mark first run as complete
-    if user_config.is_first_run():
-        user_config.mark_first_run_complete()
-        print("First run setup completed")
-    
-    # Save user preferences
-    user_config.set_preferences(
-        use_matlab=startup_config.get('use_matlab', False) and not startup_config.get('skip_matlab', False),
-        execution_mode=startup_config.get('execution', 'local')
-    )
-    
-    # Configure embedded Spinach if requested
-    if startup_config.get('configure_embedded_spinach'):
-        spinach_script = workspace_root / "environments" / "spinach" / "setup_spinach.ps1"
-        if spinach_script.exists():
-            print("Configuring embedded Spinach...")
-            subprocess.run(
-                ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(spinach_script)],
-                check=False
-            )
-            # Mark Spinach as configured
-            spinach_path = workspace_root / "environments" / "spinach"
-            if (spinach_path / "kernel").exists():
-                user_config.set_spinach_config(spinach_path=spinach_path)
-                print("[OK] Spinach configured successfully")
-    
-    # Configure MATLAB Engine if requested and a path provided
-    if startup_config.get('configure_matlab_engine'):
-        matlab_path = startup_config.get('matlab_path')
-        if matlab_path:
-            print("\n" + "="*60)
-            print("CONFIGURING MATLAB ENGINE")
-            print("="*60)
-            print(f"MATLAB Path: {matlab_path}")
-            
-            matlab_setup = Path(matlab_path) / "extern" / "engines" / "python" / "setup.py"
-            embedded_python = workspace_root / "environments" / "python" / "python.exe"
-            
-            print(f"Setup Script: {matlab_setup}")
-            print(f"Target Python: {embedded_python}")
-            print(f"Setup exists: {matlab_setup.exists()}")
-            print(f"Python exists: {embedded_python.exists()}")
-            
-            if matlab_setup.exists() and embedded_python.exists():
-                # Install MATLAB Engine to embedded Python
-                print(f"\nInstalling MATLAB Engine to embedded Python...")
-                print("This may take a few minutes...")
-                
-                result = subprocess.run(
-                    [str(embedded_python), str(matlab_setup), "install"],
-                    capture_output=True,
-                    text=True
-                )
-                
-                print(f"\nReturn code: {result.returncode}")
-                if result.stdout:
-                    print("STDOUT:")
-                    print(result.stdout)
-                if result.stderr:
-                    print("STDERR:")
-                    print(result.stderr)
-                
-                if result.returncode == 0:
-                    print("\n" + "="*60)
-                    print("[SUCCESS] MATLAB Engine installed successfully!")
-                    print("="*60)
-                    
-                    # Mark that MATLAB Engine was just installed
-                    results['matlab_engine_installed'] = True
-                    results['needs_restart'] = True
-                    
-                    # Detect MATLAB version from path
-                    matlab_version = None
-                    matlab_path_obj = Path(matlab_path)
-                    
-                    # Method 1: Look for version in path parts (e.g., R2021a, R2025b)
-                    parts = matlab_path_obj.parts
-                    for part in parts:
-                        if part.startswith('R20'):  # R2021a, R2025a, etc.
-                            matlab_version = part
-                            break
-                    
-                    # Method 2: If no version in path, check VersionInfo.xml
-                    if not matlab_version:
-                        version_info_file = matlab_path_obj / "VersionInfo.xml"
-                        if version_info_file.exists():
-                            try:
-                                import xml.etree.ElementTree as ET
-                                tree = ET.parse(version_info_file)
-                                root = tree.getroot()
-                                release = root.find('.//release')
-                                if release is not None and release.text:
-                                    matlab_version = release.text.strip()
-                                    print(f"Detected MATLAB version from VersionInfo.xml: {matlab_version}")
-                            except Exception as e:
-                                print(f"Could not read VersionInfo.xml: {e}")
-                    
-                    # Method 3: Fallback to generic version
-                    if not matlab_version:
-                        matlab_version = "Unknown"
-                        print("Warning: Could not detect MATLAB version, using 'Unknown'")
-                    
-                    # Save MATLAB configuration
-                    user_config.set_matlab_config(
-                        matlab_path=matlab_path,
-                        version=matlab_version,
-                        engine_installed=True
-                    )
-                    print(f"MATLAB configuration saved: {matlab_version} at {matlab_path}")
-                else:
-                    print(f"[!] MATLAB Engine installation failed:")
-                    print(result.stderr)
-            else:
-                if not matlab_setup.exists():
-                    print(f"[!] MATLAB setup.py not found at: {matlab_setup}")
-                if not embedded_python.exists():
-                    print(f"[!] Embedded Python not found at: {embedded_python}")
-        else:
-            print("[!] No MATLAB path provided, skipping MATLAB Engine installation")
-    
-    return results
+# apply_user_config is now imported from config_applier module at the top of this file
 
 
 def run_setup_wizard():

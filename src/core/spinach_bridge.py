@@ -1,8 +1,24 @@
 from __future__ import annotations
 import numpy as np
-import matlab.engine, matlab
 from contextlib import contextmanager
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+# Lazy import MATLAB - only import when needed
+try:
+    import matlab.engine
+    import matlab
+    MATLAB_AVAILABLE = True
+except ImportError:
+    MATLAB_AVAILABLE = False
+    matlab = None
+    # Create dummy module for type hints
+    class _DummyMatlab:
+        class engine:
+            @staticmethod
+            def start_matlab():
+                raise ImportError("MATLAB Engine not installed")
+    if not MATLAB_AVAILABLE:
+        matlab = _DummyMatlab()
 
 # Global MATLAB engine instance (kept alive after initialization)
 _global_matlab_engine = None
@@ -57,6 +73,57 @@ def start_spinach_eng(clean: bool = True):
     eng = matlab.engine.start_matlab()
     if clean:
         eng.eval("clear all", nargout=0)
+    
+    # CRITICAL: Remove any existing Spinach from MATLAB path to avoid conflicts
+    try:
+        print(f"[Spinach Bridge] Cleaning MATLAB path...")
+        # Remove all paths containing 'spinach' (case-insensitive)
+        eng.eval("p = path; paths = strsplit(p, pathsep); spinach_paths = paths(~cellfun(@isempty, regexpi(paths, 'spinach'))); if ~isempty(spinach_paths), rmpath(spinach_paths{:}); end", nargout=0)
+        print(f"[Spinach Bridge] Removed existing Spinach paths from MATLAB")
+    except Exception as e:
+        print(f"[Spinach Bridge] WARNING: Could not clean MATLAB path: {e}")
+    
+    # Add embedded Spinach to MATLAB path (PRIORITY: use project's Spinach, not system)
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent.parent
+    spinach_root = project_root / "environments" / "spinach"  # Spinach root directory
+    spinach_kernel = spinach_root / "kernel"  # Kernel subdirectory
+    
+    if spinach_kernel.exists():
+        # Convert to absolute paths with forward slashes (MATLAB compatible)
+        spinach_root_str = str(spinach_root.resolve()).replace('\\', '/')
+        
+        # Add Spinach root directory and all subdirectories to MATLAB path
+        # This includes kernel/, interfaces/, experiments/, etc.
+        eng.eval(f"addpath(genpath('{spinach_root_str}'));", nargout=0)
+        print(f"[Spinach Bridge] Added embedded Spinach (with all subdirectories) to MATLAB path: {spinach_root_str}")
+    else:
+        print(f"[Spinach Bridge] WARNING: Embedded Spinach not found at {spinach_kernel}")
+    
+    # Fix MATLAB Parallel Pool 'Processes' profile (critical for Spinach parallel computing)
+    try:
+        print(f"[Spinach Bridge] Configuring MATLAB parallel pool...")
+        
+        # Delete any corrupted 'Processes' profile
+        eng.eval("try; delete(parallel.clusterProfiles('Processes')); catch; end", nargout=0)
+        
+        # Get or create 'local' cluster and configure it
+        eng.eval("c = parcluster('local');", nargout=0)
+        
+        # Set number of workers (use all cores except 1 for OS)
+        eng.eval("c.NumWorkers = max([1, feature('numcores')-1]);", nargout=0)
+        
+        # Save as 'Processes' profile (what Spinach expects)
+        eng.eval("c.saveAsProfile('Processes');", nargout=0)
+        
+        # Set 'Processes' as default
+        eng.eval("parallel.defaultClusterProfile('Processes');", nargout=0)
+        
+        print(f"[Spinach Bridge] Parallel pool configured successfully (profile: Processes)")
+    except Exception as e:
+        print(f"[Spinach Bridge] WARNING: Failed to configure parallel pool: {e}")
+        print(f"[Spinach Bridge] Parallel computing may not work correctly")
+    
     return eng
 
 @contextmanager

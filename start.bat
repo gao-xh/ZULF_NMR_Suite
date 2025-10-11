@@ -4,6 +4,20 @@ REM Reads configuration from config.txt and launches application
 
 setlocal enabledelayedexpansion
 
+REM Check if already running (mutex lock)
+set "LOCK_FILE=%TEMP%\zulf_nmr_launch.lock"
+if exist "%LOCK_FILE%" (
+    echo Application is already starting, please wait...
+    timeout /t 2 >nul
+    if exist "%LOCK_FILE%" (
+        echo Another instance is running. Exiting...
+        exit /b 0
+    )
+)
+
+REM Create lock file
+echo %TIME% > "%LOCK_FILE%"
+
 echo ============================================================
 echo.
 
@@ -43,44 +57,16 @@ if errorlevel 1 (
 REM Always check if embedded Python exists and prefer it
 if exist "!PYTHON_PATH!" (
     echo Python Path: !PYTHON_PATH!
-    echo Environment Type: Embedded/Local Python
+    echo Environment Type: Embedded Python
     echo.
-    set "USE_DIRECT_PATH=1"
-    set "USE_EMBEDDED=1"
 ) else (
-    REM Embedded Python not found, check if this is a conda environment
-    echo !PYTHON_PATH! | findstr /C:"anaconda" /C:"conda" /C:"miniconda" >nul
-    if errorlevel 1 (
-        REM Not a conda environment, use direct Python path
-        echo Python Path: !PYTHON_PATH!
-        echo Environment Type: venv/system Python
-        echo.
-        set "USE_DIRECT_PATH=1"
-        set "USE_EMBEDDED=0"
-    ) else (
-        REM Extract conda environment name
-        for %%i in ("!PYTHON_PATH!") do set "ENV_DIR=%%~dpi"
-        set "ENV_DIR=!ENV_DIR:~0,-1!"
-        for %%i in ("!ENV_DIR!") do set "ENV_NAME=%%~nxi"
-        
-        echo Python Environment: !ENV_NAME! (conda)
-        echo.
-        echo Activating conda environment...
-        
-        call D:\anaconda3\Scripts\activate.bat !ENV_NAME!
-        
-        if errorlevel 1 (
-            echo.
-            echo ERROR: Failed to activate conda environment: !ENV_NAME!
-            echo Trying direct Python path instead...
-            set "USE_DIRECT_PATH=1"
-        ) else (
-            echo Environment activated successfully
-            echo.
-            set "USE_DIRECT_PATH=0"
-        )
-        set "USE_EMBEDDED=0"
-    )
+    echo.
+    echo ERROR: Embedded Python not found at: !PYTHON_PATH!
+    echo Please ensure the embedded Python environment is properly installed.
+    echo Expected path: environments\python\python.exe
+    echo.
+    pause
+    exit /b 1
 )
 
 REM Clear Qt environment variables to avoid conflicts
@@ -93,30 +79,16 @@ REM Run the application
 echo Starting application...
 echo.
 
-if "!USE_DIRECT_PATH!"=="1" (
-    REM Use direct Python path
-    REM Try pythonw.exe first (GUI mode, no console), fallback to python.exe
-    set "PYTHON_DIR=!PYTHON_PATH:\python.exe=!"
-    set "PYTHONW_PATH=!PYTHON_DIR!\pythonw.exe"
-    
-    if exist "!PYTHONW_PATH!" (
-        echo Using pythonw.exe (GUI mode, no console window)
-        start "" "!PYTHONW_PATH!" run.py
-    ) else (
-        echo pythonw.exe not found, using python.exe
-        "!PYTHON_PATH!" run.py
-    )
+REM Use embedded pythonw.exe (GUI mode, no console)
+set "PYTHON_DIR=!PYTHON_PATH:\python.exe=!"
+set "PYTHONW_PATH=!PYTHON_DIR!\pythonw.exe"
+
+if exist "!PYTHONW_PATH!" (
+    echo Using pythonw.exe (GUI mode, no console window)
+    start "" "!PYTHONW_PATH!" run.py
 ) else (
-    REM Use activated environment
-    REM Try to find pythonw.exe in the activated environment
-    where pythonw.exe >nul 2>&1
-    if errorlevel 1 (
-        echo pythonw.exe not found, using python.exe
-        python run.py
-    ) else (
-        echo Using pythonw.exe (GUI mode, no console window)
-        start "" pythonw.exe run.py
-    )
+    echo pythonw.exe not found, using python.exe
+    "!PYTHON_PATH!" run.py
 )
 
 REM Keep window open if there's an error
@@ -125,5 +97,8 @@ if errorlevel 1 (
     echo Application exited with errors
     pause
 )
+
+REM Clean up lock file
+if exist "%LOCK_FILE%" del "%LOCK_FILE%"
 
 endlocal

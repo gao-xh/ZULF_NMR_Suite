@@ -37,10 +37,12 @@ class InitializationWorker(QThread):
         self.engine_cm = None  # Store context manager to keep engine alive
         
         # Track initialization status
+        self.simulation_result = None
         self.matlab_has_issues = False  # Set to True if MATLAB startup fails
+        self._finished_emitted = False  # Prevent duplicate finished signal
         
     def run(self):
-        """Run initialization process with actual simulation test"""
+        """Run initialization process with 5 phases"""
         try:
             import sys
             import os
@@ -50,243 +52,20 @@ class InitializationWorker(QThread):
                 sys.path.insert(0, parent_dir)
             
             # ========== Phase 1: File Integrity Check (0-10%) ==========
-            self.progress.emit("Checking file integrity...")
-            self.progress_percent.emit(0)
-            try:
-                file_check_result = self._check_file_integrity()
-                self.file_integrity_result = file_check_result
-                
-                # CRITICAL: If file integrity fails, STOP and show error
-                if file_check_result['status'] == 'failed':
-                    error_msg = f"File Integrity Check Failed:\n{file_check_result.get('message', 'Critical files missing')}"
-                    if 'missing_files' in file_check_result:
-                        error_msg += f"\n\nMissing files:\n" + "\n".join(f"  - {f}" for f in file_check_result['missing_files'])
-                    self.finished.emit(False, error_msg)
-                    return
-                
-                self.progress.emit(f"File integrity: {file_check_result['status']}")
-                self.progress_percent.emit(10)
-            except Exception as e:
-                self.file_integrity_result = {"status": "failed", "error": str(e)}
-                error_msg = f"File integrity check failed:\n{str(e)}"
-                self.finished.emit(False, error_msg)
-                return  # STOP if file check fails
+            if not self._phase1_check_file_integrity():
+                return  # Critical failure, abort initialization
             
             # ========== Phase 2: Network Components Check (10-20%) ==========
-            self.progress.emit("Checking network components...")
-            self.progress_percent.emit(12)
-            try:
-                network_result = self._check_network_components()
-                self.network_check_result = network_result
-                self.progress.emit(f"Network check: {network_result['status']}")
-                self.progress_percent.emit(20)
-            except Exception as e:
-                self.network_check_result = {"status": "failed", "error": str(e)}
-                self.progress.emit(f"Network check failed: {str(e)}")
-                self.progress_percent.emit(20)
-                # Continue anyway - don't stop, don't show error
+            self._phase2_check_network_components()
             
-            # ========== Phase 3: MATLAB Engine Check (20-30%) ==========
-            # IMPORTANT: This phase initializes the MATLAB engine that will be used
-            # by the main UI. The engine is stored in the global ENGINE manager to
-            # avoid double initialization (which would take another 60+ seconds).
-            matlab_engine_available = False
-            self.progress.emit("Starting MATLAB engine...")
-            self.progress_percent.emit(22)
-            try:
-                from src.core.spinach_bridge import (
-                    spinach_eng, call_spinach, 
-                    sys as SYS, bas as BAS, inter as INTER, sim as SIM
-                )
-                
-                # Use context manager but keep it alive
-                self.engine_cm = spinach_eng(clean=True)
-                eng = self.engine_cm.__enter__()
-                call_spinach.default_eng = eng
-                
-                # CRITICAL: Store engine in global ENGINE manager for main UI to use
-                # This prevents double initialization
-                from src.simulation.ui.simulation_window import ENGINE
-                ENGINE._cm = self.engine_cm
-                ENGINE._eng = eng
-                
-                self.matlab_engine_result = {"status": "success", "engine": eng}
-                self.progress.emit("MATLAB engine started successfully")
-                self.progress_percent.emit(30)
-                matlab_engine_available = True
-                self.matlab_has_issues = False  # Mark as OK
-                
-            except Exception as e:
-                # MATLAB engine failed - mark as having issues
-                self.matlab_engine_result = {"status": "failed", "error": str(e)}
-                self.progress.emit("MATLAB engine unavailable (continuing with limited functionality)")
-                self.progress_percent.emit(30)
-                matlab_engine_available = False
-                self.matlab_has_issues = True  # Mark as having issues
-                print(f"MATLAB engine startup failed: {e}")
-                # Continue to Phase 4 with fake progress
+            # ========== Phase 3: MATLAB Engine Startup (20-30%) ==========
+            matlab_engine_available = self._phase3_start_matlab_engine()
             
-            # ========== Phase 4: MATLAB Initialization Simulation (30-90%, 60% total) ==========
-            # Based on timing test: Total ~62s, with sim.create() taking 48s (78% of time)
-            # Key milestones: ENGINE_READY@12s (42%), SIM_CREATE@13s (43%), DONE@62s (90%)
-            
-            if matlab_engine_available:
-                # Real MATLAB simulation
-                import time
-                self.progress.emit("Running MATLAB initialization simulation...")
-                self.progress_percent.emit(31)  # Starting Phase 4
-                
-                try:
-                    # Step 4.1: Setup system (31-42%, ~11s for engine warmup)
-                    self.progress.emit("Setting up spin system...")
-                    sys_obj = SYS()
-                    self.progress_percent.emit(33)
-                    
-                    sys_obj.isotopes(['1H', '1H'])
-                    self.progress_percent.emit(35)
-                    
-                    sys_obj.magnet(14.1)  # 600 MHz
-                    self.progress_percent.emit(37)
-                    
-                    # Step 4.2: Setup basis (~1s)
-                    bas_obj = BAS()
-                    bas_obj.formalism('sphten-liouv')
-                    self.progress_percent.emit(39)
-                    
-                    bas_obj.approximation('none')
-                    self.progress_percent.emit(41)
-                    
-                    # Reached ENGINE_READY milestone
-                    self.progress.emit("MATLAB engine ready, configuring interactions...")
-                    self.progress_percent.emit(42)
-                    
-                    # Step 4.3: Setup interactions (~1.5s to reach sim.create)
-                    inter_obj = INTER()
-                    inter_obj.zeeman([0.0, 0.0])  # Chemical shifts
-                    self.progress_percent.emit(42)
-                    
-                    # J-coupling matrix: 2x2 with 7 Hz coupling
-                    import numpy as np
-                    J_matrix = np.array([[0.0, 7.0],
-                                         [7.0, 0.0]])
-                    inter_obj.coupling_array(J_matrix)
-                    
-                    # Create SIM object (reaches 43%)
-                    sim_obj = SIM()
-                    self.progress_percent.emit(43)
-                    
-                    # Step 4.4: Compute basis (43-90%, ~49s - THE LONGEST OPERATION)
-                    # Strategy: Use time-based progress updates since MATLAB output
-                    # is printed to console but not easily captured in GUI context
-                    
-                    self.progress.emit("Computing basis (this will take ~1 minute)...")
-                    
-                    import threading
-                    import time
-                    
-                    # Progress tracker for sim.create()
-                    progress_tracker = {'percent': 43, 'stop': False}
-                    
-                    def update_progress_during_create():
-                        """Update progress during sim.create() based on measured timing"""
-                        start_time = time.time()
-                        
-                        # Progress schedule based on timing test data:
-                        # Total ~49s from 43% to 90% (47% progress range)
-                        # Key events: startup(2s), parallel_pool(10s), system(3s), basis(34s)
-                        milestones = [
-                            (2, 48, "Running startup checks..."),
-                            (5, 52, "Initializing Spinach engine..."),
-                            (8, 56, "Starting parallel pool..."),
-                            (12, 60, "Parallel pool ready (7 workers)..."),
-                            (15, 63, "Building spin system (2 particles, 14.1T)..."),
-                            (18, 66, "Configuring Zeeman interactions..."),
-                            (21, 69, "Processing J-coupling matrix..."),
-                            (24, 72, "Computing spherical tensor basis..."),
-                            (30, 76, "Building basis set descriptor..."),
-                            (36, 80, "Eliminating redundant states..."),
-                            (42, 84, "Sorting basis set..."),
-                            (48, 88, "Finalizing state space (16 states)..."),
-                        ]
-                        
-                        milestone_index = 0
-                        while not progress_tracker['stop'] and milestone_index < len(milestones):
-                            elapsed = time.time() - start_time
-                            target_time, percent, message = milestones[milestone_index]
-                            
-                            if elapsed >= target_time:
-                                self.progress.emit(message)
-                                self.progress_percent.emit(percent)
-                                progress_tracker['percent'] = percent
-                                milestone_index += 1
-                            
-                            time.sleep(0.5)  # Check every 500ms
-                        
-                        # If sim.create() finishes before all milestones, jump to 88%
-                        if not progress_tracker['stop'] and progress_tracker['percent'] < 88:
-                            self.progress_percent.emit(88)
-                            progress_tracker['percent'] = 88
-                    
-                    # Start progress update thread
-                    progress_thread = threading.Thread(target=update_progress_during_create, daemon=True)
-                    progress_thread.start()
-                    
-                    # THE ACTUAL LONG OPERATION (will block for ~49 seconds)
-                    # Note: MATLAB output (Running startup checks, SPINACH v2.9, etc.)
-                    # will print to console but is not captured here due to GUI context
-                    sim_obj.create()  # This calls create(sys, inter) and basis(spin_system, bas)
-                    
-                    # Stop progress thread and ensure we're at 90%
-                    progress_tracker['stop'] = True
-                    self.progress_percent.emit(90)
-                    progress_tracker['percent'] = 90
-                    
-                    self.simulation_result = {"status": "success", "type": "real"}
-                    self.progress.emit("MATLAB simulation completed successfully")
-                    self.progress_percent.emit(90)
-                    
-                except Exception as e:
-                    # Simulation failed - record but continue
-                    self.simulation_result = {"status": "failed", "error": str(e), "type": "real"}
-                    self.progress.emit(f"Simulation warning: {str(e)}")
-                    self.progress_percent.emit(90)
-                    # Don't return - continue to Phase 5
-                    
-            else:
-                # Fake progress simulation (MATLAB engine not available)
-                self.progress.emit("Running system checks (MATLAB unavailable)...")
-                import time
-                
-                # Simulate progress 30% -> 90% with fake delays
-                for percent in range(35, 91, 5):
-                    self.progress_percent.emit(percent)
-                    time.sleep(0.1)  # Small delay to simulate work
-                    
-                    # Update message at key points
-                    if percent == 45:
-                        self.progress.emit("Verifying system configuration...")
-                    elif percent == 60:
-                        self.progress.emit("Running compatibility checks...")
-                    elif percent == 75:
-                        self.progress.emit("Finalizing system validation...")
-                
-                self.simulation_result = {"status": "skipped", "type": "fake", "reason": "MATLAB engine unavailable"}
-                self.progress.emit("System checks completed (limited mode)")
-                self.progress_percent.emit(90)
+            # ========== Phase 4: MATLAB Simulation or Fake Progress (30-90%) ==========
+            self._phase4_run_simulation_test(matlab_engine_available)
             
             # ========== Phase 5: Final Check (90-100%) ==========
-            self.progress.emit("Performing final checks...")
-            self.progress_percent.emit(92)
-            try:
-                final_result = self._final_check()
-                self.final_check_result = final_result
-                self.progress.emit(f"Final check: {final_result['status']}")
-                self.progress_percent.emit(95)
-            except Exception as e:
-                self.final_check_result = {"status": "warning", "error": str(e)}
-                self.progress.emit(f"Final check warning: {str(e)}")
-                self.progress_percent.emit(95)
-                # Continue anyway - don't stop, don't show error
+            self._phase5_final_check()
             
             # ========== Completion (100%) ==========
             self.progress.emit("Initialization completed")
@@ -294,11 +73,325 @@ class InitializationWorker(QThread):
             
             # Generate summary report
             summary = self._generate_summary()
-            self.finished.emit(True, summary)
+            
+            # CRITICAL: Only emit finished signal once
+            import traceback
+            print(f"\n{'='*60}")
+            print(f"[TRACE] Worker run() completion - about to emit finished signal")
+            print(f"[TRACE] _finished_emitted={self._finished_emitted}")
+            print(f"[TRACE] Stack trace:")
+            for line in traceback.format_stack()[:-1]:
+                print(line.strip())
+            print(f"{'='*60}\n")
+            
+            if not self._finished_emitted:
+                self._finished_emitted = True
+                print(f"[OK] Emitting finished(True) signal...")
+                self.finished.emit(True, summary)
+                print(f"[OK] finished(True) signal emitted")
+            else:
+                print(f"[CRITICAL] finished signal already emitted, BLOCKING duplicate!")
                 
         except Exception as e:
             error_msg = f"Unexpected initialization error:\n{str(e)}"
-            self.finished.emit(False, error_msg)
+            # CRITICAL: Only emit finished signal once
+            import traceback
+            print(f"\n{'='*60}")
+            print(f"[TRACE] Worker run() EXCEPTION - about to emit finished(False)")
+            print(f"[TRACE] _finished_emitted={self._finished_emitted}")
+            print(f"[TRACE] Error: {error_msg}")
+            print(f"[TRACE] Stack trace:")
+            for line in traceback.format_stack()[:-1]:
+                print(line.strip())
+            print(f"{'='*60}\n")
+            
+            if not self._finished_emitted:
+                self._finished_emitted = True
+                print(f"[OK] Emitting finished(False) signal...")
+                self.finished.emit(False, error_msg)
+                print(f"[OK] finished(False) signal emitted")
+            else:
+                print(f"[CRITICAL] finished signal already emitted, BLOCKING duplicate!")
+    
+    def _phase1_check_file_integrity(self):
+        """
+        Phase 1: Check critical file integrity (0-10%)
+        
+        Returns:
+            bool: True if successful, False if critical failure
+        """
+        self.progress.emit("Checking file integrity...")
+        self.progress_percent.emit(0)
+        try:
+            file_check_result = self._check_file_integrity()
+            self.file_integrity_result = file_check_result
+            
+            # CRITICAL: If file integrity fails, STOP and show error
+            if file_check_result['status'] == 'failed':
+                error_msg = f"File Integrity Check Failed:\n{file_check_result.get('message', 'Critical files missing')}"
+                if 'missing_files' in file_check_result:
+                    error_msg += f"\n\nMissing files:\n" + "\n".join(f"  - {f}" for f in file_check_result['missing_files'])
+                # CRITICAL: Only emit finished signal once
+                if not self._finished_emitted:
+                    self._finished_emitted = True
+                    self.finished.emit(False, error_msg)
+                return False
+            
+            self.progress.emit(f"File integrity: {file_check_result['status']}")
+            self.progress_percent.emit(10)
+            return True
+        except Exception as e:
+            self.file_integrity_result = {"status": "failed", "error": str(e)}
+            error_msg = f"File integrity check failed:\n{str(e)}"
+            # CRITICAL: Only emit finished signal once
+            if not self._finished_emitted:
+                self._finished_emitted = True
+                self.finished.emit(False, error_msg)
+            return False  # STOP if file check fails
+    
+    def _phase2_check_network_components(self):
+        """
+        Phase 2: Check network components (10-20%)
+        
+        Non-critical phase - errors are logged but don't stop initialization
+        """
+        self.progress.emit("Checking network components...")
+        self.progress_percent.emit(12)
+        try:
+            network_result = self._check_network_components()
+            self.network_check_result = network_result
+            self.progress.emit(f"Network check: {network_result['status']}")
+            self.progress_percent.emit(20)
+        except Exception as e:
+            self.network_check_result = {"status": "failed", "error": str(e)}
+            self.progress.emit(f"Network check failed: {str(e)}")
+            self.progress_percent.emit(20)
+            # Continue anyway - don't stop, don't show error
+    
+    def _phase3_start_matlab_engine(self):
+        """
+        Phase 3: MATLAB Engine Startup (20-30%)
+        
+        IMPORTANT: This phase initializes the MATLAB engine that will be used
+        by the main UI. The engine is stored in the global ENGINE manager to
+        avoid double initialization (which would take another 60+ seconds).
+        
+        Returns:
+            bool: True if MATLAB engine started successfully, False otherwise
+        """
+        self.progress.emit("Starting MATLAB engine...")
+        self.progress_percent.emit(22)
+        try:
+            from src.core.spinach_bridge import (
+                spinach_eng, call_spinach
+            )
+            
+            # Use context manager but keep it alive
+            # Note: spinach_eng now automatically:
+            #   1. Adds embedded Spinach to MATLAB path (priority over system Spinach)
+            #   2. Configures 'Processes' parallel pool profile for parallel computing
+            self.engine_cm = spinach_eng(clean=True)
+            eng = self.engine_cm.__enter__()
+            call_spinach.default_eng = eng
+            
+            # CRITICAL: Store engine in global ENGINE manager for main UI to use
+            # This prevents double initialization
+            from src.simulation.ui.simulation_window import ENGINE
+            ENGINE._cm = self.engine_cm
+            ENGINE._eng = eng
+            
+            self.matlab_engine_result = {"status": "success", "engine": eng}
+            self.progress.emit("MATLAB engine started successfully")
+            self.progress_percent.emit(30)
+            self.matlab_has_issues = False  # Mark as OK
+            return True
+            
+        except Exception as e:
+            # MATLAB engine failed - mark as having issues
+            self.matlab_engine_result = {"status": "failed", "error": str(e)}
+            self.progress.emit("MATLAB engine unavailable (continuing with limited functionality)")
+            self.progress_percent.emit(30)
+            self.matlab_has_issues = True  # Mark as having issues
+            print(f"MATLAB engine startup failed: {e}")
+            return False
+    
+    def _phase4_run_simulation_test(self, matlab_engine_available):
+        """
+        Phase 4: MATLAB Simulation or Fake Progress (30-90%)
+        
+        Based on timing test: Total ~62s, with sim.create() taking 48s (78% of time)
+        Key milestones: ENGINE_READY@12s (42%), SIM_CREATE@13s (43%), DONE@62s (90%)
+        
+        Args:
+            matlab_engine_available (bool): Whether MATLAB engine is ready
+        """
+        if matlab_engine_available:
+            self._run_real_matlab_simulation()
+        else:
+            self._run_fake_progress_simulation()
+    
+    def _run_real_matlab_simulation(self):
+        """Run real MATLAB simulation test (Phase 4 - MATLAB available path)"""
+        import time
+        import threading
+        import numpy as np
+        
+        self.progress.emit("Running MATLAB initialization simulation...")
+        self.progress_percent.emit(31)  # Starting Phase 4
+        
+        try:
+            from src.core.spinach_bridge import (
+                sys as SYS, bas as BAS, inter as INTER, sim as SIM
+            )
+            
+            # Step 4.1: Setup system (31-42%, ~11s for engine warmup)
+            self.progress.emit("Setting up spin system...")
+            sys_obj = SYS()
+            self.progress_percent.emit(33)
+            
+            sys_obj.isotopes(['1H', '1H'])
+            self.progress_percent.emit(35)
+            
+            sys_obj.magnet(14.1)  # 600 MHz
+            self.progress_percent.emit(37)
+            
+            # Step 4.2: Setup basis (~1s)
+            bas_obj = BAS()
+            bas_obj.formalism('sphten-liouv')
+            self.progress_percent.emit(39)
+            
+            bas_obj.approximation('none')
+            self.progress_percent.emit(41)
+            
+            # Reached ENGINE_READY milestone
+            self.progress.emit("MATLAB engine ready, configuring interactions...")
+            self.progress_percent.emit(42)
+            
+            # Step 4.3: Setup interactions (~1.5s to reach sim.create)
+            inter_obj = INTER()
+            inter_obj.zeeman([0.0, 0.0])  # Chemical shifts
+            self.progress_percent.emit(42)
+            
+            # J-coupling matrix: 2x2 with 7 Hz coupling
+            J_matrix = np.array([[0.0, 7.0],
+                                 [7.0, 0.0]])
+            inter_obj.coupling_array(J_matrix)
+            
+            # Create SIM object (reaches 43%)
+            sim_obj = SIM()
+            self.progress_percent.emit(43)
+            
+            # Step 4.4: Compute basis (43-90%, ~49s - THE LONGEST OPERATION)
+            self.progress.emit("Computing basis (this will take ~1 minute)...")
+            
+            import threading
+            import time
+            
+            # Progress tracker for sim.create()
+            progress_tracker = {'percent': 43, 'stop': False}
+            
+            def update_progress_during_create():
+                """Update progress during sim.create() based on measured timing"""
+                start_time = time.time()
+                
+                # Progress schedule based on timing test data
+                milestones = [
+                    (2, 48, "Running startup checks..."),
+                    (5, 52, "Initializing Spinach engine..."),
+                    (8, 56, "Starting parallel pool..."),
+                    (12, 60, "Parallel pool ready (7 workers)..."),
+                    (15, 63, "Building spin system (2 particles, 14.1T)..."),
+                    (18, 66, "Configuring Zeeman interactions..."),
+                    (21, 69, "Processing J-coupling matrix..."),
+                    (24, 72, "Computing spherical tensor basis..."),
+                    (30, 76, "Building basis set descriptor..."),
+                    (36, 80, "Eliminating redundant states..."),
+                    (42, 84, "Sorting basis set..."),
+                    (48, 88, "Finalizing state space (16 states)..."),
+                ]
+                
+                milestone_index = 0
+                while not progress_tracker['stop'] and milestone_index < len(milestones):
+                    elapsed = time.time() - start_time
+                    target_time, percent, message = milestones[milestone_index]
+                    
+                    if elapsed >= target_time:
+                        self.progress.emit(message)
+                        self.progress_percent.emit(percent)
+                        progress_tracker['percent'] = percent
+                        milestone_index += 1
+                    
+                    time.sleep(0.5)  # Check every 500ms
+                
+                # If sim.create() finishes before all milestones, jump to 88%
+                if not progress_tracker['stop'] and progress_tracker['percent'] < 88:
+                    self.progress_percent.emit(88)
+                    progress_tracker['percent'] = 88
+            
+            # Start progress update thread
+            progress_thread = threading.Thread(target=update_progress_during_create, daemon=True)
+            progress_thread.start()
+            
+            # THE ACTUAL LONG OPERATION (will block for ~49 seconds)
+            sim_obj.create()
+            
+            # Stop progress thread and ensure we're at 90%
+            progress_tracker['stop'] = True
+            self.progress_percent.emit(90)
+            progress_tracker['percent'] = 90
+            
+            self.simulation_result = {"status": "success", "type": "real"}
+            self.progress.emit("MATLAB simulation completed successfully")
+            self.progress_percent.emit(90)
+            
+        except Exception as e:
+            # Simulation failed - record but continue
+            self.simulation_result = {"status": "failed", "error": str(e), "type": "real"}
+            self.progress.emit(f"Simulation warning: {str(e)}")
+            self.progress_percent.emit(90)
+            # Don't return - continue to Phase 5
+    
+    def _run_fake_progress_simulation(self):
+        """Run fake progress simulation (Phase 4 - MATLAB unavailable path)"""
+        import time
+        
+        self.progress.emit("Running system checks (MATLAB unavailable)...")
+        
+        # Simulate progress 30% -> 90% with fake delays
+        for percent in range(35, 91, 5):
+            self.progress_percent.emit(percent)
+            time.sleep(0.1)  # Small delay to simulate work
+            
+            # Update message at key points
+            if percent == 45:
+                self.progress.emit("Verifying system configuration...")
+            elif percent == 60:
+                self.progress.emit("Running compatibility checks...")
+            elif percent == 75:
+                self.progress.emit("Finalizing system validation...")
+        
+        self.simulation_result = {"status": "skipped", "type": "fake", "reason": "MATLAB engine unavailable"}
+        self.progress.emit("System checks completed (limited mode)")
+        self.progress_percent.emit(90)
+    
+    def _phase5_final_check(self):
+        """
+        Phase 5: Final system check (90-100%)
+        
+        Non-critical phase - errors are logged but don't stop initialization
+        """
+        self.progress.emit("Performing final checks...")
+        self.progress_percent.emit(92)
+        try:
+            final_result = self._final_check()
+            self.final_check_result = final_result
+            self.progress.emit(f"Final check: {final_result['status']}")
+            self.progress_percent.emit(95)
+        except Exception as e:
+            self.final_check_result = {"status": "warning", "error": str(e)}
+            self.progress.emit(f"Final check warning: {str(e)}")
+            self.progress_percent.emit(95)
+            # Continue anyway - don't stop, don't show error
     
     def _check_file_integrity(self):
         """Phase 1: Check critical file integrity (0-10%)"""
@@ -422,6 +515,9 @@ class SplashScreen(QWidget):
     
     def __init__(self):
         super().__init__()
+        
+        # Prevent duplicate close signal
+        self._closing_flag = False
         
         # Simulate Qt.SplashScreen behavior using QWidget
         # Qt.SplashScreen flag only works with QSplashScreen class, not QWidget
@@ -760,7 +856,14 @@ class SplashScreen(QWidget):
         
         # Spin animation continues to loop during hold time
         
+        # Stop existing hold timer if any (prevent duplicate timers)
+        if hasattr(self, 'hold_timer') and self.hold_timer:
+            print(f"[DEBUG] Stopping existing hold_timer")
+            self.hold_timer.stop()
+            self.hold_timer.deleteLater()
+        
         # Start hold timer
+        print(f"[DEBUG] Starting hold_timer for {self.HOLD_DURATION}ms")
         self.hold_timer = QTimer()
         self.hold_timer.setSingleShot(True)
         self.hold_timer.timeout.connect(self._close_splash)
@@ -773,7 +876,23 @@ class SplashScreen(QWidget):
         self.log_label.setText(message)
     
     def _on_init_finished(self, success, message):
-        """Handle initialization completion"""
+        """Handle initialization completion (only once)"""
+        import traceback
+        print(f"\n{'='*60}")
+        print(f"[TRACE] _on_init_finished() ENTRY")
+        print(f"[TRACE] success={success}, message={message[:100] if message else 'None'}")
+        print(f"[TRACE] Stack trace:")
+        for line in traceback.format_stack()[:-1]:
+            print(line.strip())
+        print(f"{'='*60}\n")
+        
+        # CRITICAL: Prevent duplicate handling
+        if hasattr(self, '_init_finished_handled') and self._init_finished_handled:
+            print(f"[CRITICAL] _on_init_finished() already handled, BLOCKING duplicate call!")
+            return
+        self._init_finished_handled = True
+        print(f"[OK] First call to _on_init_finished(), proceeding...")
+        
         self.init_success = success
         print(f"Initialization: {message}")
         self.log_label.setText("Initialization complete" if success else "Initialization failed")
@@ -800,34 +919,48 @@ class SplashScreen(QWidget):
             # Success - hold last frame for 2 seconds then close
             self._hold_last_frame()
     
-    def _hold_last_frame(self):
-        """Hold the last frame for HOLD_DURATION milliseconds"""
-        # Ensure last background frame is displayed (should be at 100%)
-        if self.bg_frames:
-            self.background_label.setPixmap(self.bg_frames[-1])
-        
-        # Spin animation continues to loop during hold time
-        
-        # Start hold timer
-        self.hold_timer = QTimer()
-        self.hold_timer.setSingleShot(True)
-        self.hold_timer.timeout.connect(self._close_splash)
-        self.hold_timer.start(self.HOLD_DURATION)
-    
     def _close_splash(self):
-        """Close splash screen and emit signal"""
-        # Stop all timers
-        if self.spin_frame_timer:
-            self.spin_frame_timer.stop()
+        """Close splash screen and emit signal (only once)"""
+        import traceback
+        print(f"\n{'='*60}")
+        print(f"[TRACE] _close_splash() ENTRY")
+        print(f"[TRACE] _closing_flag={getattr(self, '_closing_flag', 'NOT_SET')}")
+        print(f"[TRACE] Stack trace:")
+        for line in traceback.format_stack()[:-1]:
+            print(line.strip())
+        print(f"{'='*60}\n")
         
-        self.close()
+        # Prevent duplicate close signal
+        if self._closing_flag:
+            print(f"[CRITICAL] _close_splash() already called, BLOCKING duplicate!")
+            return
+        self._closing_flag = True
+        print(f"[OK] First call to _close_splash(), proceeding...")
+        
+        # Stop timers
+        if hasattr(self, 'spin_frame_timer') and self.spin_frame_timer:
+            self.spin_frame_timer.stop()
+        if hasattr(self, 'hold_timer') and self.hold_timer:
+            self.hold_timer.stop()
+        if hasattr(self, '_smooth_animation_timer') and self._smooth_animation_timer:
+            self._smooth_animation_timer.stop()
+        
+        # Emit signal and close
+        print(f"[TRACE] About to emit closed signal...")
         self.closed.emit()
+        print(f"[TRACE] Closed signal emitted, calling close()...")
+        self.close()
+        print(f"[TRACE] close() called")
     
     def closeEvent(self, event):
         """Handle window close event"""
-        # Stop all timers
-        if self.spin_frame_timer:
+        # Stop timers to prevent memory leaks
+        if hasattr(self, 'spin_frame_timer') and self.spin_frame_timer:
             self.spin_frame_timer.stop()
+        if hasattr(self, 'hold_timer') and self.hold_timer:
+            self.hold_timer.stop()
+        if hasattr(self, '_smooth_animation_timer') and self._smooth_animation_timer:
+            self._smooth_animation_timer.stop()
         
         event.accept()
 
