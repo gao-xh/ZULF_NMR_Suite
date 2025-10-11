@@ -39,5 +39,5 @@ $logs | Remove-Item -Force
 Write-Host " Done ($($logs.Count) removed)" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "✓ Project cleaned successfully!" -ForegroundColor Green
+Write-Host "[OK] Project cleaned successfully!" -ForegroundColor Green
 Write-Host ""

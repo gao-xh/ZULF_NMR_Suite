@@ -35,10 +35,10 @@ Write-Host ""
 
 try {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-    Write-Host "✓ Download complete" -ForegroundColor Green
+    Write-Host "[OK] Download complete" -ForegroundColor Green
 }
 catch {
-    Write-Host "✗ Download failed: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Download failed: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -49,15 +49,15 @@ Write-Host "Step 2: Extracting Python..." -ForegroundColor Yellow
 try {
     Expand-Archive -Path $zipFile -DestinationPath $embedDir -Force
     Remove-Item $zipFile
-    Write-Host "✓ Extraction complete" -ForegroundColor Green
+    Write-Host "[OK] Extraction complete" -ForegroundColor Green
 }
 catch {
-    Write-Host "✗ Extraction failed: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Extraction failed: $_" -ForegroundColor Red
     exit 1
 }
 
 if (-not (Test-Path $pythonExe)) {
-    Write-Host "✗ Python executable not found after extraction" -ForegroundColor Red
+    Write-Host "[ERROR] Python executable not found after extraction" -ForegroundColor Red
     exit 1
 }
 
@@ -69,7 +69,7 @@ Get-ChildItem -Path $embedDir -Filter "python3*._pth" | ForEach-Object {
     $content = Get-Content $_.FullName
     $newContent = $content -replace '#import site', 'import site'
     Set-Content -Path $_.FullName -Value $newContent
-    Write-Host "✓ Configured: $($_.Name)" -ForegroundColor Green
+    Write-Host "[OK] Configured: $($_.Name)" -ForegroundColor Green
 }
 
 # Step 4: Install pip
@@ -81,10 +81,10 @@ try {
     Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath
     & $pythonExe $getPipPath
     Remove-Item $getPipPath
-    Write-Host "✓ pip installed" -ForegroundColor Green
+    Write-Host "[OK] pip installed" -ForegroundColor Green
 }
 catch {
-    Write-Host "✗ pip installation failed: $_" -ForegroundColor Red
+    Write-Host "[ERROR] pip installation failed: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -99,10 +99,10 @@ $requirementsFile = Join-Path $embedDir "..\..\requirements.txt"
 if (Test-Path $requirementsFile) {
     try {
         & $pythonExe -m pip install -r $requirementsFile
-        Write-Host "✓ Dependencies installed from requirements.txt" -ForegroundColor Green
+        Write-Host "[OK] Dependencies installed from requirements.txt" -ForegroundColor Green
     }
     catch {
-        Write-Host "✗ Dependency installation failed: $_" -ForegroundColor Red
+        Write-Host "[ERROR] Dependency installation failed: $_" -ForegroundColor Red
         exit 1
     }
 }

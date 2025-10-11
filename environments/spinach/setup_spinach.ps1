@@ -21,7 +21,7 @@ $configFile = Join-Path $rootDir "config.txt"
 Write-Host "[1] Checking Spinach installation..." -ForegroundColor Yellow
 
 if (Test-Path (Join-Path $spinachDir "kernel")) {
-    Write-Host "  ✓ Spinach found in: $spinachDir" -ForegroundColor Green
+    Write-Host "  [OK] Spinach found in: $spinachDir" -ForegroundColor Green
     
     if ($Interactive) {
         $response = Read-Host "  Reconfigure? (y/n)"
@@ -32,7 +32,7 @@ if (Test-Path (Join-Path $spinachDir "kernel")) {
     }
 }
 else {
-    Write-Host "  ℹ Spinach not found in environments/spinach/" -ForegroundColor Gray
+    Write-Host "  [INFO] Spinach not found in environments/spinach/" -ForegroundColor Gray
     Write-Host "  Please copy your Spinach installation to:" -ForegroundColor Yellow
     Write-Host "    $spinachDir" -ForegroundColor White
     Write-Host ""
@@ -44,7 +44,7 @@ else {
             if (Test-Path $source) {
                 Write-Host "  Copying Spinach..." -ForegroundColor Yellow
                 Copy-Item -Path $source -Destination $spinachDir -Recurse -Force
-                Write-Host "  ✓ Spinach copied" -ForegroundColor Green
+                Write-Host "  [OK] Spinach copied" -ForegroundColor Green
             }
         }
         else {
@@ -116,7 +116,7 @@ catch {
 }
 
 if ($matlabLocations.Count -eq 0) {
-    Write-Host "  ✗ No MATLAB installation found" -ForegroundColor Red
+    Write-Host "  [ERROR] No MATLAB installation found" -ForegroundColor Red
     Write-Host ""
     Write-Host "  MATLAB is required for MATLAB backend." -ForegroundColor Yellow
     Write-Host "  You can:" -ForegroundColor Gray
@@ -126,7 +126,7 @@ if ($matlabLocations.Count -eq 0) {
     exit 1
 }
 
-Write-Host "  ✓ Found $($matlabLocations.Count) MATLAB installation(s):" -ForegroundColor Green
+Write-Host "  [OK] Found $($matlabLocations.Count) MATLAB installation(s):" -ForegroundColor Green
 
 for ($i = 0; $i -lt $matlabLocations.Count; $i++) {
     $matlab = $matlabLocations[$i]
@@ -149,7 +149,7 @@ if ($MatlabPath) {
         Write-Host "  Using specified MATLAB: $MatlabPath" -ForegroundColor Cyan
     }
     else {
-        Write-Host "  ✗ Invalid MATLAB path: $MatlabPath" -ForegroundColor Red
+        Write-Host "  [ERROR] Invalid MATLAB path: $MatlabPath" -ForegroundColor Red
         exit 1
     }
 }
@@ -168,7 +168,7 @@ elseif ($Interactive) {
         Write-Host "  Selected: $($selectedMatlab.Version)" -ForegroundColor Cyan
     }
     else {
-        Write-Host "  ✗ Invalid selection" -ForegroundColor Red
+        Write-Host "  [ERROR] Invalid selection" -ForegroundColor Red
         exit 1
     }
 }
@@ -192,7 +192,7 @@ spinachPath = '$($spinachDir.Replace('\', '\\'))';
 
 if exist(spinachPath, 'dir')
     addpath(genpath(spinachPath));
-    fprintf('✓ Spinach loaded from: %s\n', spinachPath);
+    fprintf('[OK] Spinach loaded from: %s\n', spinachPath);
 else
     warning('Spinach directory not found: %s', spinachPath);
 end
@@ -211,7 +211,7 @@ fprintf('\\n');
 
 $startupFile = Join-Path $rootDir "matlab_startup.m"
 Set-Content -Path $startupFile -Value $startupScript
-Write-Host "  ✓ Created: matlab_startup.m" -ForegroundColor Green
+Write-Host "  [OK] Created: matlab_startup.m" -ForegroundColor Green
 
 Write-Host ""
 
@@ -253,7 +253,7 @@ if (Test-Path $configFile) {
     }
     
     Set-Content -Path $configFile -Value $config
-    Write-Host "  ✓ Updated: config.txt" -ForegroundColor Green
+    Write-Host "  [OK] Updated: config.txt" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -271,7 +271,7 @@ try
     % Test Spinach
     if exist('spinach_version', 'file')
         ver = spinach_version();
-        fprintf('✓ Spinach loaded successfully\n');
+        fprintf('[OK] Spinach loaded successfully\n');
         fprintf('  Version: %s\n', ver);
     else
         warning('Spinach not loaded correctly');
