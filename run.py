@@ -86,23 +86,33 @@ def check_environment():
     
     # Check if running expected environment
     if PYTHON_ENV_PATH is not None:
-        expected_path = Path(PYTHON_ENV_PATH).resolve()
+        expected_path = Path(PYTHON_ENV_PATH)
+        
+        # If expected path is relative, resolve it relative to project root
+        if not expected_path.is_absolute():
+            expected_path = (PROJECT_ROOT / expected_path).resolve()
+        else:
+            expected_path = expected_path.resolve()
+        
         actual_path = Path(current_python).resolve()
         
         if expected_path != actual_path:
-            print(f"\nWarning: Not using expected Python environment")
+            print(f"\nInfo: Different Python environment detected")
             print(f"Expected: {expected_path}")
             print(f"Actual:   {actual_path}")
-            print(f"\nPlease run with the correct Python:")
-            print(f"  {expected_path} run.py")
             
-            response = input("\nContinue anyway? (y/n): ")
-            if response.lower() != 'y':
-                sys.exit(1)
+            # Check if the expected Python exists and offer to restart
+            if expected_path.exists():
+                print(f"\nNote: For best compatibility, use the configured environment:")
+                print(f"  {expected_path} run.py")
+                print(f"\nContinuing with current environment...")
+            else:
+                print(f"\nWarning: Configured Python not found at {expected_path}")
+                print(f"Continuing with current environment...")
         else:
-            print(f"Environment path: OK")
+            print(f"Environment: OK (using configured Python)")
     else:
-        print(f"Environment: Using current Python")
+        print(f"Environment: Using current Python (no specific environment configured)")
     
     # Show conda environment if applicable
     conda_env = os.environ.get('CONDA_DEFAULT_ENV', '')

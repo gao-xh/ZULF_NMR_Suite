@@ -33,36 +33,54 @@ echo.
 REM Convert path format
 set "PYTHON_PATH=!PYTHON_PATH:/=\!"
 
-REM Check if this is a conda environment
-echo !PYTHON_PATH! | findstr /C:"anaconda" /C:"conda" /C:"miniconda" >nul
-if !errorlevel!==0 (
-    REM Extract conda environment name
-    for %%i in ("!PYTHON_PATH!") do set "ENV_DIR=%%~dpi"
-    set "ENV_DIR=!ENV_DIR:~0,-1!"
-    for %%i in ("!ENV_DIR!") do set "ENV_NAME=%%~nxi"
-    
-    echo Python Environment: !ENV_NAME! (conda)
-    echo.
-    echo Activating conda environment...
-    
-    call D:\anaconda3\Scripts\activate.bat !ENV_NAME!
-    
-    if !errorlevel! NEQ 0 (
-        echo.
-        echo ERROR: Failed to activate conda environment: !ENV_NAME!
-        echo Trying direct Python path instead...
-        set "USE_DIRECT_PATH=1"
-    ) else (
-        echo Environment activated successfully
-        echo.
-        set "USE_DIRECT_PATH=0"
-    )
-) else (
-    REM Not a conda environment, use direct Python path
+REM Check if Python path is relative (embedded environment)
+echo !PYTHON_PATH! | findstr /C:":\" >nul
+if !errorlevel! NEQ 0 (
+    REM Relative path - convert to absolute
+    set "PYTHON_PATH=%~dp0!PYTHON_PATH!"
+)
+
+REM Always check if embedded Python exists and prefer it
+if exist "!PYTHON_PATH!" (
     echo Python Path: !PYTHON_PATH!
-    echo Environment Type: venv/system Python
+    echo Environment Type: Embedded/Local Python
     echo.
     set "USE_DIRECT_PATH=1"
+    set "USE_EMBEDDED=1"
+) else (
+    REM Embedded Python not found, check if this is a conda environment
+    echo !PYTHON_PATH! | findstr /C:"anaconda" /C:"conda" /C:"miniconda" >nul
+    if !errorlevel!==0 (
+        REM Extract conda environment name
+        for %%i in ("!PYTHON_PATH!") do set "ENV_DIR=%%~dpi"
+        set "ENV_DIR=!ENV_DIR:~0,-1!"
+        for %%i in ("!ENV_DIR!") do set "ENV_NAME=%%~nxi"
+        
+        echo Python Environment: !ENV_NAME! (conda)
+        echo.
+        echo Activating conda environment...
+        
+        call D:\anaconda3\Scripts\activate.bat !ENV_NAME!
+        
+        if !errorlevel! NEQ 0 (
+            echo.
+            echo ERROR: Failed to activate conda environment: !ENV_NAME!
+            echo Trying direct Python path instead...
+            set "USE_DIRECT_PATH=1"
+        ) else (
+            echo Environment activated successfully
+            echo.
+            set "USE_DIRECT_PATH=0"
+        )
+        set "USE_EMBEDDED=0"
+    ) else (
+        REM Not a conda environment, use direct Python path
+        echo Python Path: !PYTHON_PATH!
+        echo Environment Type: venv/system Python
+        echo.
+        set "USE_DIRECT_PATH=1"
+        set "USE_EMBEDDED=0"
+    )
 )
 
 REM Clear Qt environment variables to avoid conflicts
