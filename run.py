@@ -238,11 +238,31 @@ def main():
         nonlocal main_window, startup_config
         
         if splash.init_success:
-            # Show startup configuration dialog
-            from src.ui.startup_dialog import StartupDialog
-            
             # Get initialization results from splash screen worker
             init_results = splash.worker.get_init_results() if splash.worker else {}
+            
+            # Check if this is first run (MATLAB not configured)
+            from src.utils.user_config import get_user_config
+            user_config = get_user_config()
+            matlab_configured = user_config.data.get('matlab', {}).get('configured', False)
+            first_run = init_results.get('first_run', False)
+            
+            # Auto-configure on first run or if MATLAB not configured
+            if first_run or not matlab_configured:
+                print("\nDetected first run or unconfigured MATLAB - starting auto-configuration...")
+                from src.utils.first_run_setup import auto_configure_first_run
+                auto_results = auto_configure_first_run()
+                
+                # Update init_results with auto-configuration results
+                init_results['matlab_available'] = auto_results.get('matlab_engine_installed', False)
+                init_results['spinach_ready'] = auto_results.get('spinach_ready', False)
+                
+                # If MATLAB was successfully configured, mark as first_run complete
+                if auto_results.get('matlab_engine_installed'):
+                    user_config.mark_first_run_complete()
+            
+            # Show startup configuration dialog
+            from src.ui.startup_dialog import StartupDialog
             
             startup_dialog = StartupDialog(init_results)
             startup_dialog.show()

@@ -7,7 +7,220 @@ Detects if this is the first time running and offers to configure:
 """
 
 import sys
+import subprocess
 from pathlib import Path
+
+
+def auto_detect_matlab():
+    """
+    Automatically detect MATLAB installation on Windows.
+    
+    Returns:
+        Path or None: Path to MATLAB installation directory if found
+    """
+    import os
+    
+    # Common MATLAB installation paths
+    common_paths = [
+        r"C:\Program Files\MATLAB",
+        r"C:\Program Files (x86)\MATLAB",
+        r"D:\MATLAB",
+        r"E:\MATLAB",
+        r"F:\MATLAB",
+        r"C:\MATLAB"
+    ]
+    
+    matlab_installations = []
+    
+    # Method 1: Check common installation directories
+    for base_path in common_paths:
+        base = Path(base_path)
+        if base.exists():
+            # Check if it's a direct MATLAB installation (has bin/matlab.exe)
+            if (base / "bin" / "matlab.exe").exists():
+                matlab_installations.append(base)
+            else:
+                # Check subdirectories for version folders (R2024a, R2023b, etc.)
+                try:
+                    for subdir in base.iterdir():
+                        if subdir.is_dir() and (subdir / "bin" / "matlab.exe").exists():
+                            matlab_installations.append(subdir)
+                except PermissionError:
+                    continue
+    
+    # Method 2: Check Windows registry
+    try:
+        import winreg
+        reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\MathWorks\MATLAB", 0, winreg.KEY_READ)
+        try:
+            i = 0
+            while True:
+                try:
+                    version_key_name = winreg.EnumKey(reg_key, i)
+                    version_key = winreg.OpenKey(reg_key, version_key_name)
+                    matlab_root, _ = winreg.QueryValueEx(version_key, "MATLABROOT")
+                    winreg.CloseKey(version_key)
+                    
+                    matlab_path = Path(matlab_root)
+                    if matlab_path.exists() and matlab_path not in matlab_installations:
+                        matlab_installations.append(matlab_path)
+                    i += 1
+                except OSError:
+                    break
+        finally:
+            winreg.CloseKey(reg_key)
+    except (ImportError, FileNotFoundError, OSError):
+        pass
+    
+    # Return the newest version (last in sorted list)
+    if matlab_installations:
+        # Sort by directory name (R2024a > R2023b > R2021a)
+        matlab_installations.sort(key=lambda p: p.name, reverse=True)
+        return matlab_installations[0]
+    
+    return None
+
+
+def auto_configure_first_run():
+    """
+    Automatically configure everything on first run.
+    
+    Returns:
+        dict: Configuration results {
+            'python_ready': bool,
+            'spinach_ready': bool,
+            'matlab_detected': bool,
+            'matlab_path': Path or None,
+            'matlab_engine_installed': bool,
+            'matlab_version': str or None
+        }
+    """
+    workspace_root = Path(__file__).parent.parent.parent
+    
+    print("\n" + "="*70)
+    print("ZULF-NMR Suite - First Run Auto-Configuration")
+    print("="*70)
+    
+    results = {
+        'python_ready': False,
+        'spinach_ready': False,
+        'matlab_detected': False,
+        'matlab_path': None,
+        'matlab_engine_installed': False,
+        'matlab_version': None
+    }
+    
+    # Step 1: Check embedded Python
+    print("\n[1/4] Checking embedded Python environment...")
+    python_exe = workspace_root / "environments" / "python" / "python.exe"
+    if python_exe.exists():
+        print(f"  ✓ Found: {python_exe}")
+        results['python_ready'] = True
+    else:
+        print(f"  ✗ Not found: {python_exe}")
+        print("  Please run: environments\\python\\setup_embedded_python.ps1")
+        return results
+    
+    # Step 2: Check Spinach package
+    print("\n[2/4] Checking Spinach package...")
+    spinach_kernel = workspace_root / "environments" / "spinach" / "kernel"
+    if spinach_kernel.exists():
+        print(f"  ✓ Found: {spinach_kernel}")
+        results['spinach_ready'] = True
+    else:
+        print(f"  ✗ Not found: {spinach_kernel}")
+        print("  Spinach package not installed - MATLAB backend will not be available")
+    
+    # Step 3: Auto-detect MATLAB installation
+    print("\n[3/4] Detecting MATLAB installation...")
+    matlab_path = auto_detect_matlab()
+    
+    if matlab_path:
+        print(f"  ✓ Found MATLAB: {matlab_path}")
+        results['matlab_detected'] = True
+        results['matlab_path'] = matlab_path
+        
+        # Detect MATLAB version
+        version_info_file = matlab_path / "VersionInfo.xml"
+        if version_info_file.exists():
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(version_info_file)
+                root = tree.getroot()
+                release = root.find('.//release')
+                if release is not None and release.text:
+                    results['matlab_version'] = release.text.strip()
+                    print(f"  ✓ Version: {results['matlab_version']}")
+            except Exception:
+                # Try to get version from path
+                if matlab_path.name.startswith('R20'):
+                    results['matlab_version'] = matlab_path.name
+                else:
+                    results['matlab_version'] = "Unknown"
+        elif matlab_path.name.startswith('R20'):
+            results['matlab_version'] = matlab_path.name
+        else:
+            results['matlab_version'] = "Unknown"
+    else:
+        print("  ✗ MATLAB not found")
+        print("  Pure Python mode will be used")
+        return results
+    
+    # Step 4: Install MATLAB Engine if not already installed
+    print("\n[4/4] Configuring MATLAB Engine...")
+    
+    # Check if already installed
+    check_result = subprocess.run(
+        [str(python_exe), "-c", "import matlab.engine; print('OK')"],
+        capture_output=True,
+        text=True
+    )
+    
+    if check_result.returncode == 0 and "OK" in check_result.stdout:
+        print("  ✓ MATLAB Engine already installed")
+        results['matlab_engine_installed'] = True
+    else:
+        # Install MATLAB Engine
+        matlab_setup = matlab_path / "extern" / "engines" / "python" / "setup.py"
+        
+        if matlab_setup.exists():
+            print(f"  Installing MATLAB Engine from: {matlab_setup}")
+            print("  This may take a few minutes...")
+            
+            install_result = subprocess.run(
+                [str(python_exe), str(matlab_setup), "install"],
+                capture_output=True,
+                text=True
+            )
+            
+            if install_result.returncode == 0:
+                print("  ✓ MATLAB Engine installed successfully!")
+                results['matlab_engine_installed'] = True
+            else:
+                print("  ✗ MATLAB Engine installation failed:")
+                print(install_result.stderr[:500])  # Show first 500 chars of error
+        else:
+            print(f"  ✗ MATLAB Engine setup.py not found: {matlab_setup}")
+    
+    # Save configuration
+    if results['matlab_detected'] and results['matlab_engine_installed']:
+        from .user_config import get_user_config
+        user_config = get_user_config()
+        
+        user_config.set_matlab_config(
+            matlab_path=str(matlab_path),
+            version=results['matlab_version'],
+            engine_installed=True
+        )
+        
+        user_config.set_preferences(use_matlab=True, execution_mode='local')
+        print(f"\n✓ Configuration saved to user_config.json")
+    
+    print("\n" + "="*70)
+    print("Auto-Configuration Complete!")
+    print("="*70)
+    
+    return results
 
 
 def check_first_run():
