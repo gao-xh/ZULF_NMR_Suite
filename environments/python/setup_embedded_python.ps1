@@ -189,23 +189,49 @@ function Install-Dependencies {
     else {
         Write-Host "  [WARNING] requirements.txt not found at:" -ForegroundColor Yellow
         Write-Host "    $REQUIREMENTS_FILE" -ForegroundColor Gray
-        Write-Host "  Installing core packages manually..." -ForegroundColor Yellow
+        Write-Host "  Installing essential packages manually..." -ForegroundColor Yellow
         Write-Host ""
         
-        $corePackages = @('PySide6==6.7.3', 'numpy', 'matplotlib', 'scipy')
+        # Essential packages for ZULF-NMR Suite
+        $corePackages = @(
+            'PySide6==6.7.3',
+            'PySide6-Addons==6.7.3',
+            'PySide6-Essentials==6.7.3',
+            'numpy==2.3.3',
+            'scipy==1.16.2',
+            'matplotlib==3.10.0',
+            'pandas==2.3.1',
+            'pillow==11.3.0',
+            'matlabengine==25.1.2',
+            'requests==2.32.4',
+            'pyyaml==6.0.2',
+            'colorama==0.4.6',
+            'tqdm==4.67.1',
+            'psutil==5.9.0',
+            'pywin32==311'
+        )
+        
+        $successCount = 0
+        $failCount = 0
         
         foreach ($pkg in $corePackages) {
             Write-Host "    Installing $pkg..." -ForegroundColor Gray
             try {
                 & $PYTHON_EXE -m pip install $pkg --quiet --no-warn-script-location
+                $successCount++
             }
             catch {
                 Write-Host "    [WARNING] Failed to install $pkg" -ForegroundColor Yellow
+                $failCount++
             }
         }
         
         Write-Host ""
-        Write-Host "  [OK] Core packages installed" -ForegroundColor Green
+        Write-Host "  Installed $successCount/$($corePackages.Count) packages successfully" -ForegroundColor Gray
+        if ($failCount -gt 0) {
+            Write-Host "  [WARNING] $failCount package(s) failed to install" -ForegroundColor Yellow
+        }
+        Write-Host "  [OK] Essential packages installation complete" -ForegroundColor Green
         Write-Host ""
         return $true
     }

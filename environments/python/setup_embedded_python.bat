@@ -150,17 +150,76 @@ if exist "%REQUIREMENTS_FILE%" (
 ) else (
     echo   [WARNING] requirements.txt not found at:
     echo     %REQUIREMENTS_FILE%
-    echo   Installing core packages manually...
+    echo   Installing essential packages manually...
     echo.
     
-    set "PACKAGES=PySide6==6.7.3 numpy matplotlib scipy"
-    for %%P in (!PACKAGES!) do (
-        echo     Installing %%P...
-        "%PYTHON_EXE%" -m pip install %%P --quiet --no-warn-script-location
-    )
+    REM Essential packages for ZULF-NMR Suite
+    set "PKG_COUNT=0"
+    set "SUCCESS_COUNT=0"
+    
+    echo     Installing PySide6==6.7.3...
+    "%PYTHON_EXE%" -m pip install PySide6==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing PySide6-Addons==6.7.3...
+    "%PYTHON_EXE%" -m pip install PySide6-Addons==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing PySide6-Essentials==6.7.3...
+    "%PYTHON_EXE%" -m pip install PySide6-Essentials==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing numpy==2.3.3...
+    "%PYTHON_EXE%" -m pip install numpy==2.3.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing scipy==1.16.2...
+    "%PYTHON_EXE%" -m pip install scipy==1.16.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing matplotlib==3.10.0...
+    "%PYTHON_EXE%" -m pip install matplotlib==3.10.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing pandas==2.3.1...
+    "%PYTHON_EXE%" -m pip install pandas==2.3.1 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing pillow==11.3.0...
+    "%PYTHON_EXE%" -m pip install pillow==11.3.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing matlabengine==25.1.2...
+    "%PYTHON_EXE%" -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing requests==2.32.4...
+    "%PYTHON_EXE%" -m pip install requests==2.32.4 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing pyyaml==6.0.2...
+    "%PYTHON_EXE%" -m pip install pyyaml==6.0.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing colorama==0.4.6...
+    "%PYTHON_EXE%" -m pip install colorama==0.4.6 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing tqdm==4.67.1...
+    "%PYTHON_EXE%" -m pip install tqdm==4.67.1 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing psutil==5.9.0...
+    "%PYTHON_EXE%" -m pip install psutil==5.9.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
+    
+    echo     Installing pywin32==311...
+    "%PYTHON_EXE%" -m pip install pywin32==311 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    set /a PKG_COUNT+=1
     
     echo.
-    echo   [OK] Core packages installed
+    echo   Installed !SUCCESS_COUNT!/%PKG_COUNT% packages successfully
+    echo   [OK] Essential packages installation complete
     echo.
 )
 
