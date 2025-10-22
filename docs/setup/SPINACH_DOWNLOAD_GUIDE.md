@@ -9,6 +9,46 @@
 
 Spinach is a powerful MATLAB toolbox for spin dynamics simulations. It is **required** for using the MATLAB backend in ZULF-NMR Suite.
 
+**Automatic Download**: The setup scripts will automatically download and install Spinach from GitHub Releases. The version is configured in `config.txt`.
+
+---
+
+## Configuration
+
+The Spinach version and download URL are configured in `config.txt`:
+
+```ini
+# Spinach Toolbox Configuration
+SPINACH_VERSION = 2.9.2
+SPINACH_GITHUB_URL = https://github.com/IlyaKuprov/Spinach
+SPINACH_OFFICIAL_URL = https://spindynamics.org/Spinach.php
+```
+
+**To update to a newer version**: Simply change `SPINACH_VERSION` in `config.txt` and re-run the setup script.
+
+---
+
+## Automatic Installation
+
+Simply run the setup script and it will automatically download Spinach:
+
+**PowerShell**:
+```powershell
+.\environments\spinach\setup_spinach.ps1
+```
+
+**Command Prompt**:
+```cmd
+.\environments\spinach\setup_spinach.bat
+```
+
+The script will:
+1. Check if Spinach is already installed
+2. Read the version from `config.txt`
+3. Download from GitHub Releases
+4. Extract and install automatically
+5. Configure MATLAB integration
+
 ---
 
 ## Download Options

@@ -9,6 +9,8 @@ All notable changes to the ZULF-NMR Suite will be documented in this file.
   - Direct download from https://github.com/IlyaKuprov/Spinach/releases
   - No registration required (uses open-source GitHub Releases)
   - Downloads Spinach v2.9.2 automatically
+  - **Configurable version**: Spinach version read from config.txt
+  - Easy updates: Just change `SPINACH_VERSION` in config.txt
   - Automatic extraction and installation to correct directory
   - Graceful fallback to manual instructions if download fails
   - Both PowerShell and BAT versions support automatic download

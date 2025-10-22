@@ -45,9 +45,23 @@ else {
     Write-Host "  Downloading Spinach from GitHub Releases..." -ForegroundColor Cyan
     Write-Host ""
     
-    # Download Spinach from GitHub
-    $spinachVersion = "2.9.2"
-    $downloadUrl = "https://github.com/IlyaKuprov/Spinach/archive/refs/tags/$spinachVersion.zip"
+    # Read Spinach version from config.txt
+    $spinachVersion = "2.9.2"  # Default fallback
+    $spinachGithubUrl = "https://github.com/IlyaKuprov/Spinach"  # Default fallback
+    
+    if (Test-Path $configFile) {
+        $configContent = Get-Content $configFile
+        foreach ($line in $configContent) {
+            if ($line -match '^\s*SPINACH_VERSION\s*=\s*(.+)') {
+                $spinachVersion = $matches[1].Trim()
+            }
+            if ($line -match '^\s*SPINACH_GITHUB_URL\s*=\s*(.+)') {
+                $spinachGithubUrl = $matches[1].Trim()
+            }
+        }
+    }
+    
+    $downloadUrl = "$spinachGithubUrl/archive/refs/tags/$spinachVersion.zip"
     $zipFile = Join-Path $env:TEMP "Spinach-$spinachVersion.zip"
     $extractPath = Join-Path $env:TEMP "Spinach-$spinachVersion"
     

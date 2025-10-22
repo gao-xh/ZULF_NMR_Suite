@@ -38,17 +38,30 @@ if exist "%SPINACH_DIR%\kernel" (
     echo   Downloading Spinach from GitHub Releases...
     echo.
     
-    REM Download Spinach from GitHub
+    REM Read Spinach version from config.txt
     set "SPINACH_VERSION=2.9.2"
-    set "DOWNLOAD_URL=https://github.com/IlyaKuprov/Spinach/archive/refs/tags/%SPINACH_VERSION%.zip"
-    set "ZIP_FILE=%TEMP%\Spinach-%SPINACH_VERSION%.zip"
-    set "EXTRACT_PATH=%TEMP%\Spinach-%SPINACH_VERSION%"
+    set "SPINACH_GITHUB_URL=https://github.com/IlyaKuprov/Spinach"
     
-    echo   Downloading Spinach v%SPINACH_VERSION%...
-    echo     URL: %DOWNLOAD_URL%
+    if exist "%CONFIG_FILE%" (
+        for /f "tokens=1,* delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /r "^SPINACH_VERSION"') do (
+            set "SPINACH_VERSION=%%b"
+            set "SPINACH_VERSION=!SPINACH_VERSION: =!"
+        )
+        for /f "tokens=1,* delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /r "^SPINACH_GITHUB_URL"') do (
+            set "SPINACH_GITHUB_URL=%%b"
+            set "SPINACH_GITHUB_URL=!SPINACH_GITHUB_URL: =!"
+        )
+    )
+    
+    set "DOWNLOAD_URL=!SPINACH_GITHUB_URL!/archive/refs/tags/!SPINACH_VERSION!.zip"
+    set "ZIP_FILE=%TEMP%\Spinach-!SPINACH_VERSION!.zip"
+    set "EXTRACT_PATH=%TEMP%\Spinach-!SPINACH_VERSION!"
+    
+    echo   Downloading Spinach v!SPINACH_VERSION!...
+    echo     URL: !DOWNLOAD_URL!
     
     REM Use PowerShell to download (works on all Windows versions)
-    powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%' -UseBasicParsing}" 2>nul
+    powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '!DOWNLOAD_URL!' -OutFile '!ZIP_FILE!' -UseBasicParsing}" 2>nul
     
     if errorlevel 1 (
         echo   [ERROR] Failed to download Spinach
@@ -60,11 +73,11 @@ if exist "%SPINACH_DIR%\kernel" (
     echo.
     
     echo   Extracting files...
-    powershell -Command "Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%EXTRACT_PATH%' -Force" 2>nul
+    powershell -Command "Expand-Archive -Path '!ZIP_FILE!' -DestinationPath '!EXTRACT_PATH!' -Force" 2>nul
     
     if errorlevel 1 (
         echo   [ERROR] Failed to extract files
-        del /F /Q "%ZIP_FILE%" 2>nul
+        del /F /Q "!ZIP_FILE!" 2>nul
         goto :MANUAL_SPINACH
     )
     
@@ -74,7 +87,7 @@ if exist "%SPINACH_DIR%\kernel" (
     if not exist "%SPINACH_DIR%" mkdir "%SPINACH_DIR%"
     
     REM Copy contents (not the folder itself)
-    xcopy /E /I /Q "%EXTRACT_PATH%\Spinach-%SPINACH_VERSION%\*" "%SPINACH_DIR%"
+    xcopy /E /I /Q "!EXTRACT_PATH!\Spinach-!SPINACH_VERSION!\*" "%SPINACH_DIR%"
     
     if errorlevel 1 (
         echo   [ERROR] Failed to copy files
@@ -85,18 +98,18 @@ if exist "%SPINACH_DIR%\kernel" (
     echo.
     
     REM Cleanup
-    del /F /Q "%ZIP_FILE%" 2>nul
-    rd /S /Q "%EXTRACT_PATH%" 2>nul
+    del /F /Q "!ZIP_FILE!" 2>nul
+    rd /S /Q "!EXTRACT_PATH!" 2>nul
     
     goto :SPINACH_DONE
     
     :MANUAL_SPINACH
     echo.
     echo   Manual Download Instructions:
-    echo     1. Visit: https://github.com/IlyaKuprov/Spinach/releases/tag/%SPINACH_VERSION%
+    echo     1. Visit: !SPINACH_GITHUB_URL!/releases/tag/!SPINACH_VERSION!
     echo     2. Download 'Source code (zip)'
     echo     3. Extract the ZIP file
-    echo     4. Copy the contents of Spinach-%SPINACH_VERSION% folder to:
+    echo     4. Copy the contents of Spinach-!SPINACH_VERSION! folder to:
     echo        %SPINACH_DIR%
     echo.
     echo   Alternative (Official Site):

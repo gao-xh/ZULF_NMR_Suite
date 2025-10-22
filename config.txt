@@ -27,6 +27,11 @@ MATLAB_REQUIRED = True
 MATLAB_MIN_VERSION = R2021a
 MATLAB_TOOLBOX = Spinach
 
+# Spinach Toolbox Configuration
+SPINACH_VERSION = 2.9.2
+SPINACH_GITHUB_URL = https://github.com/IlyaKuprov/Spinach
+SPINACH_OFFICIAL_URL = https://spindynamics.org/Spinach.php
+
 # File Format Version (for save/load compatibility)
 FILE_FORMAT_VERSION = 2.0
 
