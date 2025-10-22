@@ -1,6 +1,6 @@
 # Application Icons
 
-This directory contains application icons for the Multi-System ZULF-NMR Simulator.
+This directory contains application icons for the ZULF-NMR Suite.
 
 ## Required Icons
 

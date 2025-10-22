@@ -4,20 +4,6 @@ REM Reads configuration from config.txt and launches application
 
 setlocal enabledelayedexpansion
 
-REM Check if already running (mutex lock)
-set "LOCK_FILE=%TEMP%\zulf_nmr_launch.lock"
-if exist "%LOCK_FILE%" (
-    echo Application is already starting, please wait...
-    timeout /t 2 >nul
-    if exist "%LOCK_FILE%" (
-        echo Another instance is running. Exiting...
-        exit /b 0
-    )
-)
-
-REM Create lock file
-echo %TIME% > "%LOCK_FILE%"
-
 echo ============================================================
 echo.
 
@@ -97,8 +83,5 @@ if errorlevel 1 (
     echo Application exited with errors
     pause
 )
-
-REM Clean up lock file
-if exist "%LOCK_FILE%" del "%LOCK_FILE%"
 
 endlocal
