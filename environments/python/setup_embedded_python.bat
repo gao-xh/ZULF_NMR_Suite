@@ -9,7 +9,17 @@ setlocal enabledelayedexpansion
 REM Configuration
 set "EMBED_DIR=%~dp0"
 set "PYTHON_VERSION=3.12.7"
-set "DOWNLOAD_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
+
+REM Multiple download sources (will try in order if one fails)
+set "DOWNLOAD_URL_1=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
+set "DOWNLOAD_NAME_1=Python.org (Official)"
+
+set "DOWNLOAD_URL_2=https://registry.npmmirror.com/-/binary/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
+set "DOWNLOAD_NAME_2=npm mirror (China)"
+
+set "DOWNLOAD_URL_3=https://repo.huaweicloud.com/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
+set "DOWNLOAD_NAME_3=Huawei Cloud (China)"
+
 set "ZIP_FILE=%EMBED_DIR%python-embed.zip"
 set "PYTHON_EXE=%EMBED_DIR%python.exe"
 set "REQUIREMENTS_FILE=%EMBED_DIR%..\..\requirements.txt"
@@ -52,13 +62,51 @@ if exist "%PYTHON_EXE%" (
 
 REM Step 1: Download
 echo Step 1/5: Downloading embedded Python...
-echo   URL: %DOWNLOAD_URL%
+echo   Version: %PYTHON_VERSION%
 echo.
 
-powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%' -UseBasicParsing}"
+REM Try multiple download sources
+set "DOWNLOAD_SUCCESS=0"
 
-if not exist "%ZIP_FILE%" (
-    echo   [ERROR] Download failed!
+echo   Trying: %DOWNLOAD_NAME_1%
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_1%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_1%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   [FAILED] %DOWNLOAD_NAME_1%
+echo.
+echo   Trying: %DOWNLOAD_NAME_2%
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_2%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_2%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   [FAILED] %DOWNLOAD_NAME_2%
+echo.
+echo   Trying: %DOWNLOAD_NAME_3%
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_3%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_3%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   [FAILED] %DOWNLOAD_NAME_3%
+echo.
+
+:DOWNLOAD_COMPLETE
+if "%DOWNLOAD_SUCCESS%"=="0" (
+    echo   [ERROR] All download sources failed!
+    echo.
+    echo   Please try:
+    echo     1. Check your internet connection
+    echo     2. Download manually from: https://www.python.org/downloads/
+    echo     3. Extract to: %EMBED_DIR%
     echo.
     goto :ERROR
 )

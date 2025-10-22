@@ -8,7 +8,23 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $PYTHON_VERSION = "3.12.7"
 $EMBED_DIR = $PSScriptRoot
-$DOWNLOAD_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+
+# Multiple download sources (official + mirrors)
+$DOWNLOAD_SOURCES = @(
+    @{
+        Name = "Python.org (Official)"
+        URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+    },
+    @{
+        Name = "npm mirror (China)"
+        URL = "https://registry.npmmirror.com/-/binary/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+    },
+    @{
+        Name = "Huawei Cloud (China)"
+        URL = "https://repo.huaweicloud.com/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+    }
+)
+
 $ZIP_FILE = Join-Path $EMBED_DIR "python-embed.zip"
 $PYTHON_EXE = Join-Path $EMBED_DIR "python.exe"
 $REQUIREMENTS_FILE = Join-Path $EMBED_DIR "..\..\requirements.txt"
@@ -51,24 +67,43 @@ function Test-Installation {
 # Download embedded Python
 function Download-Python {
     Write-Host "Step 1/5: Downloading embedded Python..." -ForegroundColor Cyan
-    Write-Host "  URL: $DOWNLOAD_URL" -ForegroundColor Gray
+    Write-Host "  Version: $PYTHON_VERSION" -ForegroundColor Gray
+    Write-Host ""
     
-    try {
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $ZIP_FILE -UseBasicParsing
-        $ProgressPreference = 'Continue'
+    foreach ($source in $DOWNLOAD_SOURCES) {
+        Write-Host "  Trying: $($source.Name)" -ForegroundColor Yellow
+        Write-Host "  URL: $($source.URL)" -ForegroundColor DarkGray
         
-        $fileSize = (Get-Item $ZIP_FILE).Length / 1MB
-        Write-Host "  Downloaded: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Gray
-        Write-Host "  [OK] Download complete" -ForegroundColor Green
-        Write-Host ""
-        return $true
+        try {
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $source.URL -OutFile $ZIP_FILE -UseBasicParsing -TimeoutSec 30
+            $ProgressPreference = 'Continue'
+            
+            $fileSize = (Get-Item $ZIP_FILE).Length / 1MB
+            Write-Host "  Downloaded: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Gray
+            Write-Host "  [OK] Download complete from $($source.Name)" -ForegroundColor Green
+            Write-Host ""
+            return $true
+        }
+        catch {
+            Write-Host "  [FAILED] $($source.Name): $_" -ForegroundColor Red
+            if (Test-Path $ZIP_FILE) {
+                Remove-Item $ZIP_FILE -Force
+            }
+            Write-Host ""
+            # Try next source
+        }
     }
-    catch {
-        Write-Host "  [ERROR] Download failed: $_" -ForegroundColor Red
-        Write-Host ""
-        return $false
-    }
+    
+    # All sources failed
+    Write-Host "  [ERROR] All download sources failed" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  Please try:" -ForegroundColor Yellow
+    Write-Host "    1. Check your internet connection" -ForegroundColor Gray
+    Write-Host "    2. Download manually from: https://www.python.org/downloads/" -ForegroundColor Gray
+    Write-Host "    3. Extract to: $EMBED_DIR" -ForegroundColor Gray
+    Write-Host ""
+    return $false
 }
 
 # Extract Python archive
