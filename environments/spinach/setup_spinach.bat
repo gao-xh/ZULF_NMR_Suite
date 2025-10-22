@@ -113,26 +113,66 @@ for /f "skip=2 tokens=2*" %%a in ('reg query "HKLM\SOFTWARE\MathWorks\MATLAB" 2^
 )
 
 if !MATLAB_COUNT!==0 (
-    echo   [ERROR] No MATLAB installation found
+    echo   [WARNING] No MATLAB installation found automatically
     echo.
-    echo   MATLAB R2021b or later is required for MATLAB backend.
+    echo   Would you like to:
+    echo     1. Manually enter MATLAB installation path
+    echo     2. Exit and install MATLAB
+    echo     3. Use Python backend instead
     echo.
-    echo   Options:
-    echo     1. Install MATLAB from MathWorks
-    echo     2. Use Python backend instead (no MATLAB required)
+    
+    choice /C 123 /M "  Select option"
+    
+    if errorlevel 3 (
+        echo.
+        echo   You can use Python backend instead (no MATLAB required)
+        echo.
+        goto :END
+    )
+    
+    if errorlevel 2 (
+        echo.
+        echo   Please install MATLAB R2021b or later, then run this script again.
+        echo.
+        goto :END
+    )
+    
+    REM Option 1: Manual input
     echo.
-    goto :ERROR
+    set /p "MANUAL_PATH=  Enter MATLAB installation path (e.g., C:\Program Files\MATLAB\R2023b): "
+    
+    if exist "!MANUAL_PATH!\bin\matlab.exe" (
+        set /a MATLAB_COUNT=1
+        for %%F in ("!MANUAL_PATH!") do set "MATLAB_1_VERSION=%%~nxF"
+        set "MATLAB_1_PATH=!MANUAL_PATH!"
+        set "MATLAB_1_EXE=!MANUAL_PATH!\bin\matlab.exe"
+        echo   [OK] MATLAB found at: !MANUAL_PATH!
+        echo.
+    ) else (
+        if exist "!MANUAL_PATH!" (
+            echo   [ERROR] matlab.exe not found in: !MANUAL_PATH!\bin\
+        ) else (
+            echo   [ERROR] Path not found: !MANUAL_PATH!
+        )
+        echo.
+        goto :ERROR
+    )
 )
 
-echo   [OK] Found !MATLAB_COUNT! MATLAB installation(s)
-echo.
-
-for /l %%i in (1,1,!MATLAB_COUNT!) do (
-    echo     [%%i] !MATLAB_%%i_VERSION!
-    echo         !MATLAB_%%i_PATH!
+if !MATLAB_COUNT! GTR 0 (
+    echo   [OK] Found !MATLAB_COUNT! MATLAB installation(s)
+    echo.
+    
+    for /l %%i in (1,1,!MATLAB_COUNT!) do (
+        echo     [%%i] !MATLAB_%%i_VERSION!
+        echo         !MATLAB_%%i_PATH!
+    )
+    
+    echo.
 )
 
-echo.
+REM Continue only if we have MATLAB
+if !MATLAB_COUNT!==0 goto :ERROR
 
 REM Step 3: Select MATLAB version
 echo Step 3/5: Selecting MATLAB version...

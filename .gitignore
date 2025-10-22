@@ -52,6 +52,7 @@ environments/python/*
 environments/spinach/*
 !environments/spinach/README.md
 !environments/spinach/setup_spinach.ps1
+!environments/spinach/setup_spinach.bat
 
 # First-run setup marker
 .setup_complete

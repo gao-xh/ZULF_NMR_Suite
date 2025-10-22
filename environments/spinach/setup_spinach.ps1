@@ -139,15 +139,71 @@ catch {
 }
 
 if ($matlabLocations.Count -eq 0) {
-    Write-Host "  [ERROR] No MATLAB installation found" -ForegroundColor Red
+    Write-Host "  [WARNING] No MATLAB installation found automatically" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  MATLAB R2021b or later is required for MATLAB backend." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  Options:" -ForegroundColor Gray
-    Write-Host "    1. Install MATLAB from MathWorks" -ForegroundColor DarkGray
-    Write-Host "    2. Use Python backend instead (no MATLAB required)" -ForegroundColor DarkGray
-    Write-Host ""
-    exit 1
+    
+    if ($Interactive) {
+        Write-Host "  Would you like to:" -ForegroundColor Cyan
+        Write-Host "    1. Manually enter MATLAB installation path" -ForegroundColor Gray
+        Write-Host "    2. Exit and install MATLAB" -ForegroundColor Gray
+        Write-Host "    3. Use Python backend instead" -ForegroundColor Gray
+        Write-Host ""
+        
+        $choice = Read-Host "  Select option (1-3)"
+        
+        if ($choice -eq "1") {
+            Write-Host ""
+            $manualPath = Read-Host "  Enter MATLAB installation path (e.g., C:\Program Files\MATLAB\R2023b)"
+            
+            if (Test-Path $manualPath) {
+                $matlabExe = Join-Path $manualPath "bin\matlab.exe"
+                if (Test-Path $matlabExe) {
+                    $version = Split-Path $manualPath -Leaf
+                    $matlabLocations += @{
+                        Version = $version
+                        Path = $manualPath
+                        Exe = $matlabExe
+                    }
+                    Write-Host "  [OK] MATLAB found at: $manualPath" -ForegroundColor Green
+                    Write-Host ""
+                }
+                else {
+                    Write-Host "  [ERROR] matlab.exe not found in: $manualPath\bin\" -ForegroundColor Red
+                    Write-Host ""
+                    exit 1
+                }
+            }
+            else {
+                Write-Host "  [ERROR] Path not found: $manualPath" -ForegroundColor Red
+                Write-Host ""
+                exit 1
+            }
+        }
+        elseif ($choice -eq "2") {
+            Write-Host ""
+            Write-Host "  Please install MATLAB R2021b or later, then run this script again." -ForegroundColor Cyan
+            Write-Host ""
+            exit 0
+        }
+        else {
+            Write-Host ""
+            Write-Host "  You can use Python backend instead (no MATLAB required)" -ForegroundColor Cyan
+            Write-Host ""
+            exit 0
+        }
+    }
+    else {
+        Write-Host "  [ERROR] No MATLAB installation found" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  MATLAB R2021b or later is required for MATLAB backend." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Options:" -ForegroundColor Gray
+        Write-Host "    1. Install MATLAB from MathWorks" -ForegroundColor DarkGray
+        Write-Host "    2. Run this script with -MatlabPath parameter" -ForegroundColor DarkGray
+        Write-Host "    3. Use Python backend instead (no MATLAB required)" -ForegroundColor DarkGray
+        Write-Host ""
+        exit 1
+    }
 }
 
 Write-Host "  [OK] Found $($matlabLocations.Count) MATLAB installation(s)" -ForegroundColor Green
