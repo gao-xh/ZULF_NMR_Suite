@@ -4,6 +4,16 @@ All notable changes to the ZULF-NMR Suite will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed - 2025-10-22 (Critical)
+- **Setuptools Dependency Error**: Fixed "Cannot import 'setuptools.build_meta'" error
+  - Install setuptools and wheel immediately after pip installation
+  - Prevents package build failures on fresh installations
+  - Affects embedded Python setup on systems without pre-installed build tools
+- **Robust Package Installation**: Added fallback mechanism
+  - Automatically attempts core package installation if requirements.txt fails
+  - Better error messages indicating cause (network, compatibility, build deps)
+  - Ensures minimum viable environment even with partial failures
+
 ### Added - 2025-10-22
 - **Automatic First-Run Configuration**: Smart environment setup on first launch
   - Auto-detection using `.setup_complete` marker file
