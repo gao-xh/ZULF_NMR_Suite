@@ -266,44 +266,57 @@ def handle_splash_completion(splash, app):
     # Auto-detect MATLAB installation path for display
     init_results = detect_matlab_info(init_results)
     
-    # Create and show startup dialog
+    # Create startup dialog
     startup_dialog = create_startup_dialog(init_results, matlab_has_issues)
     
     print(f"[DEBUG] StartupDialog created (type: {type(startup_dialog).__name__})")
     print(f"[DEBUG] Dialog ID: {id(startup_dialog)}")
     
-    # Only use exec() for modal dialogs, not show()
-    print(f"[DEBUG] Executing dialog (modal)...")
-    result = startup_dialog.exec()
-    print(f"[DEBUG] Dialog result: {result}")
+    # CRITICAL FIX: Connect dialog signal to handle user selection
+    # This allows non-modal dialog to work properly
+    def on_config_selected(startup_config):
+        """Handle user's configuration selection"""
+        print(f"[DEBUG] User selected config: {startup_config}")
+        
+        # Handle MATLAB configuration if needed
+        needs_restart = handle_matlab_configuration(startup_config, matlab_available)
+        
+        if needs_restart:
+            # Exit for restart
+            sys.exit(0)
+            return
+        
+        # Handle Pure Python mode - cleanup MATLAB engine if needed
+        use_matlab = startup_config.get('use_matlab', False)
+        if not use_matlab and matlab_available:
+            cleanup_matlab_engine(splash.worker)
+        
+        # Save user's configuration
+        save_user_configuration(startup_config)
+        
+        # Start main application
+        main_window = start_main_application(startup_config)
+        
+        # Close the startup dialog
+        startup_dialog.close()
     
-    if result != QDialog.Accepted:
-        # User cancelled - exit application
+    def on_dialog_rejected():
+        """Handle user cancellation"""
         print("[INFO] User cancelled startup configuration")
         app.quit()
-        return None
     
-    # User accepted - get configuration
-    startup_config = startup_dialog.get_config()
-    print(f"[DEBUG] User selected config: {startup_config}")
+    # Connect signals
+    startup_dialog.config_selected.connect(on_config_selected)
+    startup_dialog.rejected.connect(on_dialog_rejected)
     
-    # Handle MATLAB configuration if needed
-    needs_restart = handle_matlab_configuration(startup_config, matlab_available)
+    # Show dialog non-modally (original working pattern from 365c709)
+    startup_dialog.show()
+    startup_dialog.raise_()
+    startup_dialog.activateWindow()
     
-    if needs_restart:
-        # Exit for restart
-        sys.exit(0)
-        return None
+    print(f"[DEBUG] Dialog shown (non-modal, signals connected)")
     
-    # Handle Pure Python mode - cleanup MATLAB engine if needed
-    use_matlab = startup_config.get('use_matlab', False)
-    if not use_matlab and matlab_available:
-        cleanup_matlab_engine(splash.worker)
+    # Don't call app.quit() - let the dialog stay open
+    # The dialog will handle launching main window via signals
     
-    # Save user's configuration
-    save_user_configuration(startup_config)
-    
-    # Start main application
-    main_window = start_main_application(startup_config)
-    
-    return main_window
+    return None

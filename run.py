@@ -10,20 +10,37 @@ import os
 import subprocess
 from pathlib import Path
 
-# CRITICAL: Setup platform-specific environment BEFORE any imports
-# This must be done before importing PySide6 to avoid Qt conflicts
+# CRITICAL: Clear Qt plugin paths BEFORE any Qt imports
+# This prevents conflicts between conda's PyQt5 and our PySide6
+os.environ.pop('QT_PLUGIN_PATH', None)
+os.environ.pop('QT_QPA_PLATFORM_PLUGIN_PATH', None)
+os.environ.pop('QML_IMPORT_PATH', None)
+os.environ.pop('QML2_IMPORT_PATH', None)
+
+# Disable hardware video acceleration to prevent buffer pool issues
+# Force software decoding for video playback
+os.environ['QT_OPENGL'] = 'software'
+os.environ['QT_D3D11_ADAPTER'] = '-1'
+os.environ['QT_ANGLE_PLATFORM'] = 'software'
+os.environ['LIBVA_DRIVER_NAME'] = 'i965'
+
+# Force PySide6 to use its own Qt libraries
+# Get PySide6 installation path and set Qt plugin path explicitly
+try:
+    import PySide6
+    pyside6_path = Path(PySide6.__file__).parent
+    plugins_path = pyside6_path / "Qt" / "plugins"
+    if plugins_path.exists():
+        os.environ['QT_PLUGIN_PATH'] = str(plugins_path)
+except Exception as e:
+    pass  # If we can't set it, let PySide6 use defaults
+
+from PySide6.QtWidgets import QApplication, QMessageBox
+
+# Add project root to path BEFORE importing src modules
 PROJECT_ROOT = Path(__file__).parent.absolute()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-# Import platform setup utilities
-from src.utils.platform_setup import setup_platform_specific
-
-# Configure Windows App ID, Qt environment, hardware acceleration
-setup_platform_specific()
-
-# NOW safe to import Qt
-from PySide6.QtWidgets import QApplication, QMessageBox, QDialog
 
 # Import configuration
 from src.utils.config import config
@@ -43,33 +60,23 @@ def check_environment():
     
     # Check if running expected environment
     if PYTHON_ENV_PATH is not None:
-        expected_path = Path(PYTHON_ENV_PATH)
-        
-        # If expected path is relative, resolve it relative to project root
-        if not expected_path.is_absolute():
-            expected_path = (PROJECT_ROOT / expected_path).resolve()
-        else:
-            expected_path = expected_path.resolve()
-        
+        expected_path = Path(PYTHON_ENV_PATH).resolve()
         actual_path = Path(current_python).resolve()
         
         if expected_path != actual_path:
-            print(f"\nInfo: Different Python environment detected")
+            print(f"\nWarning: Not using expected Python environment")
             print(f"Expected: {expected_path}")
             print(f"Actual:   {actual_path}")
+            print(f"\nPlease run with the correct Python:")
+            print(f"  {expected_path} run.py")
             
-            # Check if the expected Python exists and offer to restart
-            if expected_path.exists():
-                print(f"\nNote: For best compatibility, use the configured environment:")
-                print(f"  {expected_path} run.py")
-                print(f"\nContinuing with current environment...")
-            else:
-                print(f"\nWarning: Configured Python not found at {expected_path}")
-                print(f"Continuing with current environment...")
+            response = input("\nContinue anyway? (y/n): ")
+            if response.lower() != 'y':
+                sys.exit(1)
         else:
-            print(f"Environment: OK (using configured Python)")
+            print(f"Environment path: OK")
     else:
-        print(f"Environment: Using current Python (no specific environment configured)")
+        print(f"Environment: Using current Python")
     
     # Show conda environment if applicable
     conda_env = os.environ.get('CONDA_DEFAULT_ENV', '')
@@ -126,41 +133,11 @@ def verify_dependencies():
 def main():
     """Main entry point with environment setup and splash screen"""
     
-    import os
-    print(f"[DEBUG] Process ID: {os.getpid()}")
-    
     print("=" * 60)
     print(config.app_name)
     print(config.app_full_version)
     print("=" * 60)
     print()
-    
-    # Check for first run
-    from src.utils.first_run_setup import check_first_run, show_first_run_dialog
-    
-    setup_status = check_first_run()
-    if setup_status['first_run']:
-        # First run only triggered if embedded Python is missing
-        print("\n" + "=" * 60)
-        print("WARNING: Embedded Python Not Found")
-        print("=" * 60)
-        print(f"Python environment: {'Ready' if setup_status['python_ready'] else 'MISSING'}")
-        print(f"Spinach/MATLAB:     {'Ready' if setup_status['spinach_ready'] else 'Not configured'}")
-        print()
-        
-        # Show setup dialog
-        setup_choice = show_first_run_dialog()
-        
-        if setup_choice == 'setup':
-            print("\nPlease run the Python setup script:")
-            print("  .\\environments\\python\\setup_embedded_python.ps1")
-            print("\nThen restart the application.")
-            sys.exit(0)
-        else:  # skip
-            print("WARNING: Continuing with system Python (not recommended)...")
-            print("For best experience, please set up embedded Python.")
-
-
     
     # Environment setup
     print("Checking environment...")
@@ -191,34 +168,28 @@ def main():
     
     # Variable to hold main window
     main_window = None
-    splash_closed_handled = False  # Prevent duplicate handling
     
     def on_splash_closed():
-        """Called when splash screen closes - delegate to startup coordinator"""
-        nonlocal main_window, splash_closed_handled
+        """Called when splash screen closes"""
+        nonlocal main_window
         
-        import traceback
-        print(f"\n{'='*60}")
-        print(f"[TRACE] on_splash_closed() ENTRY in run.py")
-        print(f"[TRACE] splash_closed_handled={splash_closed_handled}")
-        print(f"[TRACE] Stack trace:")
-        for line in traceback.format_stack()[:-1]:
-            print(line.strip())
-        print(f"{'='*60}\n")
-        
-        # Prevent duplicate calls
-        if splash_closed_handled:
-            print("[CRITICAL] on_splash_closed() already handled, BLOCKING duplicate!")
-            return
-        splash_closed_handled = True
-        print("[OK] First call to on_splash_closed(), proceeding...")
-        
-        from src.utils.startup_coordinator import handle_splash_completion
-        main_window = handle_splash_completion(splash, app)
+        if splash.init_success:
+            # Import and create main window using new module structure
+            from src.simulation.ui.simulation_window import MultiSystemSpinachUI
+            main_window = MultiSystemSpinachUI()
+            main_window.show()
+        else:
+            # Show error and exit
+            QMessageBox.critical(
+                None,
+                "Initialization Failed",
+                "Failed to initialize MATLAB engine or validation system.\n"
+                "Please check your MATLAB installation and try again."
+            )
+            app.quit()
     
     # Connect splash closed signal
     splash.closed.connect(on_splash_closed)
-    print("[DEBUG] Connected splash.closed signal to on_splash_closed()")
     
     # Run application
     sys.exit(app.exec())
