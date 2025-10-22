@@ -36,10 +36,56 @@ Advanced Zero- to Ultra-Low Field NMR simulation and data processing platform
 ### System Requirements
 
 - **Python**: 3.12+
-- **MATLAB**: R2021b+ (for Spinach backend)
+- **MATLAB**: R2021b+ (for Spinach backend, optional)
 - **OS**: Windows 10/11, macOS, Linux
 
-### Installation
+### First-Time Setup (Automatic)
+
+**ZULF-NMR Suite now features automatic environment configuration on first run!**
+
+Simply run the launcher script, and the system will:
+1. Detect first-time usage
+2. Configure embedded Python environment
+3. Setup Spinach/MATLAB integration (if MATLAB is installed)
+4. Create all necessary configuration files
+
+```bash
+# Windows - Just run start.bat
+start.bat
+
+# PowerShell - Run start.ps1
+.\start.ps1
+```
+
+The first run will display:
+```
+============================================================
+  FIRST RUN DETECTED - Auto-Configuration Starting
+============================================================
+
+[1/2] Configuring embedded Python environment...
+[2/2] Configuring Spinach/MATLAB environment...
+
+============================================================
+  First-Run Configuration Complete!
+============================================================
+```
+
+### Manual Reconfiguration
+
+If you need to reconfigure the environment later (e.g., after updating MATLAB):
+
+```bash
+# Windows
+start.bat --setup
+
+# PowerShell
+.\start.ps1 --setup
+```
+
+### Manual Installation (Advanced Users)
+
+If you prefer manual setup or need fine-grained control:
 
 1. **Clone the repository**
    ```bash
@@ -47,12 +93,25 @@ Advanced Zero- to Ultra-Low Field NMR simulation and data processing platform
    cd ZULF_NMR_Suite
    ```
 
-2. **Install dependencies**
+2. **Configure Python environment**
    ```bash
-   pip install -r requirements.txt
+   # Windows
+   environments\python\setup_embedded_python.bat
+   
+   # PowerShell
+   .\environments\python\setup_embedded_python.ps1
    ```
 
-3. **Launch application**
+3. **Configure Spinach/MATLAB (optional)**
+   ```bash
+   # Windows
+   environments\spinach\setup_spinach.bat
+   
+   # PowerShell
+   .\environments\spinach\setup_spinach.ps1
+   ```
+
+4. **Launch application**
    ```bash
    # Windows
    start.bat
@@ -111,40 +170,167 @@ See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for detailed design.
 
 ## Configuration
 
-Edit `config.txt` to customize settings:
+The application is configured through `config.txt`. All settings use the format `KEY = VALUE`.
+
+### Application Settings
 
 ```ini
-# Application Info
+# Basic Information
 APP_NAME = ZULF-NMR Suite
 APP_VERSION = 0.1.0
+APP_DATE = October 2025
+APP_AUTHOR = Xuehan Gao, Ajoy Lab
+APP_DESCRIPTION = Advanced ZULF-NMR simulation and data processing suite
 
-# Python Environment
-PYTHON_ENV_PATH = environments/python/python.exe
-
-# MATLAB Settings (optional)
-MATLAB_PATH = C:/Program Files/MATLAB/R2023b
-SPINACH_PATH = C:/Spinach
+# Windows Taskbar Integration
+APP_USER_MODEL_ID = AjoyLab.ZULFNMRSuite.Application.0.1
 ```
 
-### UI Settings
+### Python Environment
+
+The suite uses an embedded Python environment for better compatibility and portability:
+
 ```ini
+# Python Interpreter Path
+PYTHON_ENV_PATH = environments/python/python.exe
+
+# Required Dependencies
+PYSIDE6_VERSION = 6.7.3
+NUMPY_REQUIRED = True
+MATPLOTLIB_REQUIRED = True
+```
+
+**Note**: The embedded Python environment is pre-configured and located in `environments/python/`. You can also use your own Python installation by modifying `PYTHON_ENV_PATH`.
+
+### MATLAB Integration (Optional)
+
+For Spinach-based quantum spin simulations:
+
+```ini
+# MATLAB Configuration
+MATLAB_REQUIRED = True
+MATLAB_MIN_VERSION = R2025a
+MATLAB_TOOLBOX = Spinach
+```
+
+**Setup Instructions**:
+1. Install MATLAB R2021b or later
+2. Install the Spinach toolbox from [spinach.uk](http://www.spinach.uk/)
+3. Ensure MATLAB is in your system PATH, or the application will auto-detect it
+
+### User Interface
+
+Customize the splash screen and main window appearance:
+
+```ini
+# Window Dimensions
 SPLASH_WINDOW_WIDTH = 700
 SPLASH_WINDOW_HEIGHT = 550
 ANIMATION_SIZE = 400
-```
 
-### Icon Assets
-```ini
+# Animation Assets
+PNG_SEQUENCE_FOLDER = assets/animations/Starting_Animation
+SPIN_SEQUENCE_FOLDER = assets/animations/Spin
+
+# Application Icons
 APP_ICON = assets/icons/app_icon.ico
 APP_ICON_PNG = assets/icons/app_icon.png
 SPLASH_LOGO = assets/icons/splash_logo.png
 ```
 
-See `config.txt` for complete configuration options.
+### File Compatibility
+
+```ini
+# Save/Load Format Version
+FILE_FORMAT_VERSION = 2.0
+```
+
+Projects saved with the same `FILE_FORMAT_VERSION` are guaranteed to be compatible. See [docs/DATA_STRUCTURE.md](docs/DATA_STRUCTURE.md) for format details.
 
 ---
 
-## �️ Development
+## Environment Setup
+
+### Option 1: Use Embedded Python (Recommended)
+
+The easiest way to get started is using the pre-configured embedded Python environment:
+
+1. Download or clone the repository
+2. The embedded Python is located at `environments/python/`
+3. All dependencies are pre-installed
+4. Simply run `start.bat` (Windows) or `start.ps1` (PowerShell)
+
+### Option 2: Use Your Own Python
+
+If you prefer to use your own Python installation:
+
+1. **Install Python 3.12+**
+   ```bash
+   # Download from python.org or use a package manager
+   ```
+
+2. **Create a virtual environment (recommended)**
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # Linux/macOS
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Update config.txt**
+   ```ini
+   # Point to your Python executable
+   PYTHON_ENV_PATH = C:/path/to/your/python.exe
+   # Or for virtual environment:
+   PYTHON_ENV_PATH = venv/Scripts/python.exe
+   ```
+
+### Option 3: Use Conda Environment
+
+For users with Anaconda or Miniconda:
+
+1. **Create conda environment**
+   ```bash
+   conda create -n zulf-nmr python=3.12
+   conda activate zulf-nmr
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Update config.txt**
+   ```ini
+   # Example path (adjust to your system)
+   PYTHON_ENV_PATH = C:/Users/YourName/anaconda3/envs/zulf-nmr/python.exe
+   ```
+
+### Verify Installation
+
+Run the test script to check your environment:
+
+```bash
+python tests/test_environment.py
+```
+
+This will verify:
+- Python version compatibility
+- Required package installations
+- MATLAB integration (if enabled)
+- Configuration file validity
+
+---
+
+## Development
 
 ### Current Status
 - **Architecture Restructuring**: Modular separation in progress
@@ -227,7 +413,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ## Author
 
-Xuehan Gao  
+**Xuehan Gao**  
 Ajoy Lab, UC Berkeley  
 October 2025
 
@@ -235,9 +421,9 @@ October 2025
 
 ## Acknowledgments
 
-- Spinach - MATLAB toolkit for spin dynamics simulation
-- PySide6 - Qt bindings for Python
-- Ajoy Lab - Research support and scientific guidance
+- **Spinach** - MATLAB toolkit for spin dynamics simulation
+- **PySide6** - Qt bindings for Python
+- **Ajoy Lab** - Research support and scientific guidance
 
 ---
 
@@ -261,6 +447,6 @@ For questions or issues:
 ---
 
 <p align="center">
-  ZULF-NMR Suite v0.1.0<br>
+  <strong>ZULF-NMR Suite v0.1.0</strong><br>
   Advanced Zero- to Ultra-Low Field NMR Platform
 </p>

@@ -1,8 +1,89 @@
 @echo off
 REM ZULF-NMR Simulator Launcher
 REM Reads configuration from config.txt and launches application
+REM Auto-configures environment on first run
+REM
+REM Usage:
+REM   start.bat           - Normal launch (auto-configure on first run)
+REM   start.bat --setup   - Force reconfiguration of environment
 
 setlocal enabledelayedexpansion
+
+REM Check for --setup flag
+if "%1"=="--setup" (
+    echo ============================================================
+    echo   MANUAL RECONFIGURATION REQUESTED
+    echo ============================================================
+    echo.
+    echo Removing first-run marker and reconfiguring environment...
+    if exist ".setup_complete" del ".setup_complete"
+    echo.
+)
+
+REM ============================================================
+REM First-Run Auto-Configuration
+REM ============================================================
+
+REM Check if this is the first run (marker file doesn't exist)
+if not exist ".setup_complete" (
+    echo ============================================================
+    echo   FIRST RUN DETECTED - Auto-Configuration Starting
+    echo ============================================================
+    echo.
+    echo This appears to be your first time running ZULF-NMR Suite.
+    echo Setting up the environment automatically...
+    echo.
+    
+    REM Step 1: Setup embedded Python
+    echo [1/2] Configuring embedded Python environment...
+    echo.
+    if exist "environments\python\setup_embedded_python.bat" (
+        call environments\python\setup_embedded_python.bat
+        if errorlevel 1 (
+            echo.
+            echo ERROR: Python environment setup failed!
+            echo Please run the setup script manually:
+            echo   environments\python\setup_embedded_python.bat
+            echo.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo WARNING: Python setup script not found!
+        echo Expected: environments\python\setup_embedded_python.bat
+        echo.
+    )
+    
+    echo.
+    echo [2/2] Configuring Spinach/MATLAB environment...
+    echo.
+    if exist "environments\spinach\setup_spinach.bat" (
+        call environments\spinach\setup_spinach.bat
+        if errorlevel 1 (
+            echo.
+            echo WARNING: Spinach/MATLAB setup failed or skipped.
+            echo You can run this setup later if needed:
+            echo   environments\spinach\setup_spinach.bat
+            echo.
+            echo Continuing with Python-only mode...
+            echo.
+        )
+    ) else (
+        echo WARNING: Spinach setup script not found!
+        echo Expected: environments\spinach\setup_spinach.bat
+        echo.
+    )
+    
+    REM Create first-run completion marker
+    echo. > .setup_complete
+    echo ============================================================
+    echo   First-Run Configuration Complete!
+    echo ============================================================
+    echo.
+    echo Press any key to start the application...
+    pause >nul
+    echo.
+)
 
 echo ============================================================
 echo.

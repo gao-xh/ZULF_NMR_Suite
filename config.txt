@@ -24,7 +24,7 @@ MATPLOTLIB_REQUIRED = True
 MATLAB_REQUIRED = True
 
 # MATLAB Configuration
-MATLAB_MIN_VERSION = R2021b
+MATLAB_MIN_VERSION = R2025a
 MATLAB_TOOLBOX = Spinach
 
 # File Format Version (for save/load compatibility)

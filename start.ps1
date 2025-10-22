@@ -1,7 +1,113 @@
 # Multi-System ZULF-NMR Simulator Launcher (PowerShell)
 # Reads configuration from config.txt and launches application
+# Auto-configures environment on first run
+#
+# Usage:
+#   .\start.ps1           - Normal launch (auto-configure on first run)
+#   .\start.ps1 --setup   - Force reconfiguration of environment
+
+param(
+    [switch]$Setup
+)
 
 $ErrorActionPreference = "Stop"
+
+# Check for --setup flag
+if ($Setup) {
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "  MANUAL RECONFIGURATION REQUESTED" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Removing first-run marker and reconfiguring environment..." -ForegroundColor White
+    if (Test-Path ".setup_complete") {
+        Remove-Item ".setup_complete" -Force
+    }
+    Write-Host ""
+}
+
+# ============================================================
+# First-Run Auto-Configuration
+# ============================================================
+
+# Check if this is the first run (marker file doesn't exist)
+if (-not (Test-Path ".setup_complete")) {
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "  FIRST RUN DETECTED - Auto-Configuration Starting" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "This appears to be your first time running ZULF-NMR Suite." -ForegroundColor White
+    Write-Host "Setting up the environment automatically..." -ForegroundColor White
+    Write-Host ""
+    
+    # Step 1: Setup embedded Python
+    Write-Host "[1/2] Configuring embedded Python environment..." -ForegroundColor Green
+    Write-Host ""
+    
+    $pythonSetupScript = "environments\python\setup_embedded_python.ps1"
+    if (Test-Path $pythonSetupScript) {
+        try {
+            & $pythonSetupScript
+            if ($LASTEXITCODE -ne 0) {
+                throw "Python setup script returned error code: $LASTEXITCODE"
+            }
+        }
+        catch {
+            Write-Host ""
+            Write-Host "ERROR: Python environment setup failed!" -ForegroundColor Red
+            Write-Host "Please run the setup script manually:" -ForegroundColor Yellow
+            Write-Host "  $pythonSetupScript" -ForegroundColor White
+            Write-Host ""
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+    }
+    else {
+        Write-Host "WARNING: Python setup script not found!" -ForegroundColor Yellow
+        Write-Host "Expected: $pythonSetupScript" -ForegroundColor White
+        Write-Host ""
+    }
+    
+    Write-Host ""
+    Write-Host "[2/2] Configuring Spinach/MATLAB environment..." -ForegroundColor Green
+    Write-Host ""
+    
+    $spinachSetupScript = "environments\spinach\setup_spinach.ps1"
+    if (Test-Path $spinachSetupScript) {
+        try {
+            & $spinachSetupScript
+            # Note: Spinach setup may exit with non-zero if user chooses Python-only mode
+            # This is acceptable, so we don't throw on error
+        }
+        catch {
+            Write-Host ""
+            Write-Host "WARNING: Spinach/MATLAB setup failed or skipped." -ForegroundColor Yellow
+            Write-Host "You can run this setup later if needed:" -ForegroundColor White
+            Write-Host "  $spinachSetupScript" -ForegroundColor White
+            Write-Host ""
+            Write-Host "Continuing with Python-only mode..." -ForegroundColor White
+            Write-Host ""
+        }
+    }
+    else {
+        Write-Host "WARNING: Spinach setup script not found!" -ForegroundColor Yellow
+        Write-Host "Expected: $spinachSetupScript" -ForegroundColor White
+        Write-Host ""
+    }
+    
+    # Create first-run completion marker
+    New-Item -Path ".setup_complete" -ItemType File -Force | Out-Null
+    
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "  First-Run Configuration Complete!" -ForegroundColor Green
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Press Enter to start the application..." -ForegroundColor White
+    Read-Host
+    Write-Host ""
+}
+
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host ""
 
 # Read configuration file
 $configFile = "config.txt"
