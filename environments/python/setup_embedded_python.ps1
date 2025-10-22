@@ -1,136 +1,269 @@
 # Setup Embedded Python Environment
-# This script downloads and configures embedded Python in environments/python/
+# This script downloads and configures embedded Python 3.12.7 in environments/python/
+# Author: Xuehan Gao, Ajoy Lab
+# Date: October 2025
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  ZULF-NMR Suite - Embedded Python Setup" -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host ""
+# Configuration
+$PYTHON_VERSION = "3.12.7"
+$EMBED_DIR = $PSScriptRoot
+$DOWNLOAD_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-embed-amd64.zip"
+$ZIP_FILE = Join-Path $EMBED_DIR "python-embed.zip"
+$PYTHON_EXE = Join-Path $EMBED_DIR "python.exe"
+$REQUIREMENTS_FILE = Join-Path $EMBED_DIR "..\..\requirements.txt"
 
-$embedDir = $PSScriptRoot
-$pythonVersion = "3.12.7"
-$downloadUrl = "https://www.python.org/ftp/python/$pythonVersion/python-$pythonVersion-embed-amd64.zip"
-$zipFile = Join-Path $embedDir "python-embed.zip"
-
-# Check if already installed
-$pythonExe = Join-Path $embedDir "python.exe"
-if (Test-Path $pythonExe) {
-    Write-Host "Python already installed in environments/python/" -ForegroundColor Yellow
-    Write-Host "Version:"
-    & $pythonExe --version
+# Banner
+function Show-Banner {
     Write-Host ""
-    
-    $response = Read-Host "Reinstall? (y/n)"
-    if ($response -ne 'y') {
-        exit 0
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "  ZULF-NMR Suite - Embedded Python Setup" -ForegroundColor Cyan
+    Write-Host "  Python Version: $PYTHON_VERSION" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host ""
+}
+
+# Check if Python is already installed
+function Test-Installation {
+    if (Test-Path $PYTHON_EXE) {
+        Write-Host "Python is already installed at:" -ForegroundColor Yellow
+        Write-Host "  $EMBED_DIR" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "Current version:" -ForegroundColor Yellow
+        & $PYTHON_EXE --version
+        Write-Host ""
+        
+        $response = Read-Host "Do you want to reinstall? (y/N)"
+        if ($response -ne 'y' -and $response -ne 'Y') {
+            Write-Host ""
+            Write-Host "Setup cancelled. Existing installation preserved." -ForegroundColor Green
+            Write-Host ""
+            return $false
+        }
+        Write-Host ""
+        Write-Host "Removing existing installation..." -ForegroundColor Yellow
+        Get-ChildItem -Path $EMBED_DIR -Exclude "*.ps1", "*.bat" | Remove-Item -Recurse -Force
+        Write-Host ""
     }
-    Write-Host ""
+    return $true
 }
 
-# Step 1: Download
-Write-Host "Step 1: Downloading embedded Python $pythonVersion..." -ForegroundColor Yellow
-Write-Host "URL: $downloadUrl"
-Write-Host ""
-
-try {
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-    Write-Host "[OK] Download complete" -ForegroundColor Green
-}
-catch {
-    Write-Host "[ERROR] Download failed: $_" -ForegroundColor Red
-    exit 1
-}
-
-# Step 2: Extract
-Write-Host ""
-Write-Host "Step 2: Extracting Python..." -ForegroundColor Yellow
-
-try {
-    Expand-Archive -Path $zipFile -DestinationPath $embedDir -Force
-    Remove-Item $zipFile
-    Write-Host "[OK] Extraction complete" -ForegroundColor Green
-}
-catch {
-    Write-Host "[ERROR] Extraction failed: $_" -ForegroundColor Red
-    exit 1
-}
-
-if (-not (Test-Path $pythonExe)) {
-    Write-Host "[ERROR] Python executable not found after extraction" -ForegroundColor Red
-    exit 1
-}
-
-# Step 3: Configure
-Write-Host ""
-Write-Host "Step 3: Configuring Python..." -ForegroundColor Yellow
-
-Get-ChildItem -Path $embedDir -Filter "python3*._pth" | ForEach-Object {
-    $content = Get-Content $_.FullName
-    $newContent = $content -replace '#import site', 'import site'
-    Set-Content -Path $_.FullName -Value $newContent
-    Write-Host "[OK] Configured: $($_.Name)" -ForegroundColor Green
-}
-
-# Step 4: Install pip
-Write-Host ""
-Write-Host "Step 4: Installing pip..." -ForegroundColor Yellow
-
-$getPipPath = Join-Path $embedDir "get-pip.py"
-try {
-    Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath
-    & $pythonExe $getPipPath
-    Remove-Item $getPipPath
-    Write-Host "[OK] pip installed" -ForegroundColor Green
-}
-catch {
-    Write-Host "[ERROR] pip installation failed: $_" -ForegroundColor Red
-    exit 1
-}
-
-# Step 5: Install dependencies
-Write-Host ""
-Write-Host "Step 5: Installing dependencies..." -ForegroundColor Yellow
-Write-Host "This may take several minutes..." -ForegroundColor Gray
-Write-Host ""
-
-$requirementsFile = Join-Path $embedDir "..\..\requirements.txt"
-
-if (Test-Path $requirementsFile) {
+# Download embedded Python
+function Download-Python {
+    Write-Host "Step 1/5: Downloading embedded Python..." -ForegroundColor Cyan
+    Write-Host "  URL: $DOWNLOAD_URL" -ForegroundColor Gray
+    
     try {
-        & $pythonExe -m pip install -r $requirementsFile
-        Write-Host "[OK] Dependencies installed from requirements.txt" -ForegroundColor Green
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $ZIP_FILE -UseBasicParsing
+        $ProgressPreference = 'Continue'
+        
+        $fileSize = (Get-Item $ZIP_FILE).Length / 1MB
+        Write-Host "  Downloaded: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Gray
+        Write-Host "  [OK] Download complete" -ForegroundColor Green
+        Write-Host ""
+        return $true
     }
     catch {
-        Write-Host "[ERROR] Dependency installation failed: $_" -ForegroundColor Red
-        exit 1
+        Write-Host "  [ERROR] Download failed: $_" -ForegroundColor Red
+        Write-Host ""
+        return $false
     }
 }
-else {
-    Write-Host "Warning: requirements.txt not found" -ForegroundColor Yellow
-    Write-Host "Installing core packages manually..." -ForegroundColor Gray
+
+# Extract Python archive
+function Extract-Python {
+    Write-Host "Step 2/5: Extracting Python archive..." -ForegroundColor Cyan
     
-    $packages = @('PySide6', 'numpy', 'matplotlib', 'scipy')
-    foreach ($pkg in $packages) {
-        Write-Host "  Installing $pkg..." -ForegroundColor Gray
-        & $pythonExe -m pip install $pkg
+    try {
+        Expand-Archive -Path $ZIP_FILE -DestinationPath $EMBED_DIR -Force
+        Remove-Item $ZIP_FILE -Force
+        Write-Host "  [OK] Extraction complete" -ForegroundColor Green
+        Write-Host ""
+        
+        if (-not (Test-Path $PYTHON_EXE)) {
+            Write-Host "  [ERROR] python.exe not found after extraction" -ForegroundColor Red
+            Write-Host ""
+            return $false
+        }
+        return $true
+    }
+    catch {
+        Write-Host "  [ERROR] Extraction failed: $_" -ForegroundColor Red
+        Write-Host ""
+        return $false
     }
 }
 
-# Summary
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Setup Complete!" -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Python installed in: $embedDir" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Test it:" -ForegroundColor Yellow
-Write-Host "  $pythonExe --version" -ForegroundColor Gray
-Write-Host "  $pythonExe -c `"import PySide6; print('OK')`"" -ForegroundColor Gray
-Write-Host ""
-Write-Host "To use embedded Python, update config.txt:" -ForegroundColor Yellow
-Write-Host "  PYTHON_ENV_PATH = environments/python/python.exe" -ForegroundColor Gray
-Write-Host ""
+# Configure Python environment
+function Configure-Python {
+    Write-Host "Step 3/5: Configuring Python environment..." -ForegroundColor Cyan
+    
+    $pthFiles = Get-ChildItem -Path $EMBED_DIR -Filter "python3*._pth"
+    
+    if ($pthFiles.Count -eq 0) {
+        Write-Host "  [WARNING] No ._pth file found" -ForegroundColor Yellow
+        Write-Host ""
+        return $true
+    }
+    
+    foreach ($file in $pthFiles) {
+        try {
+            $content = Get-Content $file.FullName
+            $newContent = $content -replace '#import site', 'import site'
+            Set-Content -Path $file.FullName -Value $newContent
+            Write-Host "  Enabled site packages: $($file.Name)" -ForegroundColor Gray
+        }
+        catch {
+            Write-Host "  [WARNING] Failed to configure $($file.Name): $_" -ForegroundColor Yellow
+        }
+    }
+    
+    Write-Host "  [OK] Configuration complete" -ForegroundColor Green
+    Write-Host ""
+    return $true
+}
 
-Read-Host "Press Enter to exit"
+# Install pip
+function Install-Pip {
+    Write-Host "Step 4/5: Installing pip..." -ForegroundColor Cyan
+    
+    $getPipPath = Join-Path $EMBED_DIR "get-pip.py"
+    
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath -UseBasicParsing
+        $ProgressPreference = 'Continue'
+        
+        Write-Host "  Running pip installer..." -ForegroundColor Gray
+        & $PYTHON_EXE $getPipPath --quiet --no-warn-script-location
+        Remove-Item $getPipPath -Force
+        
+        # Verify pip installation
+        $pipVersion = & $PYTHON_EXE -m pip --version
+        Write-Host "  Installed: $pipVersion" -ForegroundColor Gray
+        Write-Host "  [OK] pip installation complete" -ForegroundColor Green
+        Write-Host ""
+        return $true
+    }
+    catch {
+        Write-Host "  [ERROR] pip installation failed: $_" -ForegroundColor Red
+        Write-Host ""
+        if (Test-Path $getPipPath) {
+            Remove-Item $getPipPath -Force
+        }
+        return $false
+    }
+}
+
+# Install dependencies
+function Install-Dependencies {
+    Write-Host "Step 5/5: Installing dependencies..." -ForegroundColor Cyan
+    
+    if (Test-Path $REQUIREMENTS_FILE) {
+        Write-Host "  Installing from requirements.txt..." -ForegroundColor Gray
+        Write-Host "  This may take several minutes, please wait..." -ForegroundColor Yellow
+        Write-Host ""
+        
+        try {
+            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --quiet --no-warn-script-location
+            Write-Host "  [OK] All dependencies installed successfully" -ForegroundColor Green
+            Write-Host ""
+            
+            # Show installed packages
+            Write-Host "  Installed packages:" -ForegroundColor Gray
+            $packages = & $PYTHON_EXE -m pip list --format=columns
+            $packages | Select-Object -First 10 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+            if ($packages.Count -gt 10) {
+                Write-Host "    ... and $($packages.Count - 10) more packages" -ForegroundColor DarkGray
+            }
+            Write-Host ""
+            return $true
+        }
+        catch {
+            Write-Host "  [ERROR] Dependency installation failed: $_" -ForegroundColor Red
+            Write-Host ""
+            return $false
+        }
+    }
+    else {
+        Write-Host "  [WARNING] requirements.txt not found at:" -ForegroundColor Yellow
+        Write-Host "    $REQUIREMENTS_FILE" -ForegroundColor Gray
+        Write-Host "  Installing core packages manually..." -ForegroundColor Yellow
+        Write-Host ""
+        
+        $corePackages = @('PySide6==6.7.3', 'numpy', 'matplotlib', 'scipy')
+        
+        foreach ($pkg in $corePackages) {
+            Write-Host "    Installing $pkg..." -ForegroundColor Gray
+            try {
+                & $PYTHON_EXE -m pip install $pkg --quiet --no-warn-script-location
+            }
+            catch {
+                Write-Host "    [WARNING] Failed to install $pkg" -ForegroundColor Yellow
+            }
+        }
+        
+        Write-Host ""
+        Write-Host "  [OK] Core packages installed" -ForegroundColor Green
+        Write-Host ""
+        return $true
+    }
+}
+
+# Show completion summary
+function Show-Summary {
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Green
+    Write-Host "  Installation Complete!" -ForegroundColor Green
+    Write-Host "============================================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Installation directory:" -ForegroundColor Cyan
+    Write-Host "  $EMBED_DIR" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Python version:" -ForegroundColor Cyan
+    & $PYTHON_EXE --version | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+    Write-Host ""
+    Write-Host "Quick test:" -ForegroundColor Cyan
+    Write-Host "  $PYTHON_EXE --version" -ForegroundColor Gray
+    Write-Host "  $PYTHON_EXE -c `"import PySide6; print('PySide6 OK')`"" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "To use this environment:" -ForegroundColor Cyan
+    Write-Host "  1. Update config.txt:" -ForegroundColor Gray
+    Write-Host "     PYTHON_ENV_PATH = environments/python/python.exe" -ForegroundColor DarkGray
+    Write-Host "  2. Run start.bat or start.ps1" -ForegroundColor Gray
+    Write-Host ""
+}
+
+# Main execution
+try {
+    Show-Banner
+    
+    if (-not (Test-Installation)) {
+        exit 0
+    }
+    
+    if (-not (Download-Python)) { exit 1 }
+    if (-not (Extract-Python)) { exit 1 }
+    if (-not (Configure-Python)) { exit 1 }
+    if (-not (Install-Pip)) { exit 1 }
+    if (-not (Install-Dependencies)) { exit 1 }
+    
+    Show-Summary
+    
+    Write-Host "Press Enter to exit..." -ForegroundColor Yellow
+    Read-Host
+    exit 0
+}
+catch {
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host "  Installation Failed!" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Error: $_" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Press Enter to exit..." -ForegroundColor Yellow
+    Read-Host
+    exit 1
+}

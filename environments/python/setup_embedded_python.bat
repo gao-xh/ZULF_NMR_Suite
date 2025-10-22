@@ -1,106 +1,204 @@
 @echo off
 REM Setup Embedded Python Environment
-REM This script downloads and configures embedded Python in environments/python/
+REM This script downloads and configures embedded Python 3.12.7 in environments/python/
+REM Author: Xuehan Gao, Ajoy Lab
+REM Date: October 2025
 
 setlocal enabledelayedexpansion
 
-echo ============================================================
-echo   ZULF-NMR Suite - Embedded Python Setup
-echo ============================================================
-echo.
-
+REM Configuration
 set "EMBED_DIR=%~dp0"
 set "PYTHON_VERSION=3.12.7"
 set "DOWNLOAD_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
-set "ZIP_FILE=python-embed.zip"
+set "ZIP_FILE=%EMBED_DIR%python-embed.zip"
+set "PYTHON_EXE=%EMBED_DIR%python.exe"
+set "REQUIREMENTS_FILE=%EMBED_DIR%..\..\requirements.txt"
+
+REM Colors (not natively supported, but we can use echo styling)
+echo.
+echo ============================================================
+echo   ZULF-NMR Suite - Embedded Python Setup
+echo   Python Version: %PYTHON_VERSION%
+echo ============================================================
+echo.
 
 REM Check if already installed
-if exist "%EMBED_DIR%python.exe" (
-    echo Python already installed in environments/python/
-    echo Version:
-    "%EMBED_DIR%python.exe" --version
+if exist "%PYTHON_EXE%" (
+    echo Python is already installed at:
+    echo   %EMBED_DIR%
     echo.
-    choice /C YN /M "Reinstall"
-    if errorlevel 2 goto :END
+    echo Current version:
+    "%PYTHON_EXE%" --version
+    echo.
+    
+    choice /C YN /M "Do you want to reinstall"
+    if errorlevel 2 (
+        echo.
+        echo Setup cancelled. Existing installation preserved.
+        echo.
+        goto :END
+    )
+    
+    echo.
+    echo Removing existing installation...
+    for /d %%D in ("%EMBED_DIR%*") do (
+        if /i not "%%~nxD"=="python" rd /s /q "%%D" 2>nul
+    )
+    for %%F in ("%EMBED_DIR%*") do (
+        if /i not "%%~xF"==".ps1" if /i not "%%~xF"==".bat" del /q "%%F" 2>nul
+    )
     echo.
 )
 
-echo Step 1: Downloading embedded Python %PYTHON_VERSION%...
-echo URL: %DOWNLOAD_URL%
+REM Step 1: Download
+echo Step 1/5: Downloading embedded Python...
+echo   URL: %DOWNLOAD_URL%
 echo.
 
-REM Download using PowerShell
-powershell -Command "& {Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%'}"
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%' -UseBasicParsing}"
 
 if not exist "%ZIP_FILE%" (
-    echo ERROR: Download failed!
+    echo   [ERROR] Download failed!
+    echo.
     goto :ERROR
 )
 
+for %%F in ("%ZIP_FILE%") do set "FILE_SIZE=%%~zF"
+set /a FILE_SIZE_MB=!FILE_SIZE! / 1048576
+echo   Downloaded: !FILE_SIZE_MB! MB
+echo   [OK] Download complete
 echo.
-echo Step 2: Extracting Python...
-powershell -Command "& {Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%EMBED_DIR%' -Force}"
 
-del "%ZIP_FILE%"
+REM Step 2: Extract
+echo Step 2/5: Extracting Python archive...
 
-if not exist "%EMBED_DIR%python.exe" (
-    echo ERROR: Extraction failed!
+powershell -NoProfile -Command "& {Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%EMBED_DIR%' -Force}"
+del /q "%ZIP_FILE%" 2>nul
+
+if not exist "%PYTHON_EXE%" (
+    echo   [ERROR] python.exe not found after extraction
+    echo.
     goto :ERROR
 )
 
+echo   [OK] Extraction complete
 echo.
-echo Step 3: Configuring Python...
-REM Enable pip by uncommenting 'import site' in python3xx._pth
-for %%f in (python3*.._pth) do (
-    powershell -Command "(Get-Content '%%f') -replace '#import site', 'import site' | Set-Content '%%f'"
-    echo Configured: %%f
+
+REM Step 3: Configure
+echo Step 3/5: Configuring Python environment...
+
+set "PTH_FOUND=0"
+for %%F in ("%EMBED_DIR%python3*._pth") do (
+    set "PTH_FOUND=1"
+    powershell -NoProfile -Command "& {(Get-Content '%%F') -replace '#import site', 'import site' | Set-Content '%%F'}"
+    echo   Enabled site packages: %%~nxF
 )
 
-echo.
-echo Step 4: Installing pip...
-powershell -Command "& {Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile 'get-pip.py'}"
-"%EMBED_DIR%python.exe" get-pip.py
-del get-pip.py
-
-echo.
-echo Step 5: Installing dependencies...
-echo This may take several minutes...
-echo.
-
-REM Install from requirements.txt
-if exist "..\..\requirements.txt" (
-    "%EMBED_DIR%python.exe" -m pip install -r "..\..\requirements.txt"
+if !PTH_FOUND!==0 (
+    echo   [WARNING] No ._pth file found
 ) else (
-    echo Warning: requirements.txt not found
-    echo Installing core packages manually...
-    "%EMBED_DIR%python.exe" -m pip install PySide6
-    "%EMBED_DIR%python.exe" -m pip install numpy
-    "%EMBED_DIR%python.exe" -m pip install matplotlib
-    "%EMBED_DIR%python.exe" -m pip install scipy
+    echo   [OK] Configuration complete
+)
+echo.
+
+REM Step 4: Install pip
+echo Step 4/5: Installing pip...
+
+set "GET_PIP=%EMBED_DIR%get-pip.py"
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GET_PIP%' -UseBasicParsing}"
+
+if not exist "%GET_PIP%" (
+    echo   [ERROR] Failed to download get-pip.py
+    echo.
+    goto :ERROR
 )
 
+echo   Running pip installer...
+"%PYTHON_EXE%" "%GET_PIP%" --quiet --no-warn-script-location
+del /q "%GET_PIP%" 2>nul
+
+echo   [OK] pip installation complete
+echo.
+
+REM Step 5: Install dependencies
+echo Step 5/5: Installing dependencies...
+
+if exist "%REQUIREMENTS_FILE%" (
+    echo   Installing from requirements.txt...
+    echo   This may take several minutes, please wait...
+    echo.
+    
+    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --quiet --no-warn-script-location
+    
+    if errorlevel 1 (
+        echo   [ERROR] Dependency installation failed
+        echo.
+        goto :ERROR
+    )
+    
+    echo   [OK] All dependencies installed successfully
+    echo.
+    
+    echo   Installed packages:
+    "%PYTHON_EXE%" -m pip list --format=columns > "%TEMP%\pip_list.txt"
+    for /f "skip=2 tokens=*" %%L in ('type "%TEMP%\pip_list.txt" ^| more /e +0') do (
+        set /a COUNT+=1
+        if !COUNT! LEQ 10 echo     %%L
+    )
+    del "%TEMP%\pip_list.txt" 2>nul
+    echo.
+) else (
+    echo   [WARNING] requirements.txt not found at:
+    echo     %REQUIREMENTS_FILE%
+    echo   Installing core packages manually...
+    echo.
+    
+    set "PACKAGES=PySide6==6.7.3 numpy matplotlib scipy"
+    for %%P in (!PACKAGES!) do (
+        echo     Installing %%P...
+        "%PYTHON_EXE%" -m pip install %%P --quiet --no-warn-script-location
+    )
+    
+    echo.
+    echo   [OK] Core packages installed
+    echo.
+)
+
+REM Success summary
 echo.
 echo ============================================================
-echo   Setup Complete!
+echo   Installation Complete!
 echo ============================================================
 echo.
-echo Python installed in: %EMBED_DIR%
+echo Installation directory:
+echo   %EMBED_DIR%
 echo.
-echo Test it:
-echo   %EMBED_DIR%python.exe --version
-echo   %EMBED_DIR%python.exe -c "import PySide6; print('OK')"
+echo Python version:
+"%PYTHON_EXE%" --version
 echo.
-echo To use embedded Python, update config.txt:
-echo   PYTHON_ENV_PATH = environments/python/python.exe
+echo Quick test:
+echo   %PYTHON_EXE% --version
+echo   %PYTHON_EXE% -c "import PySide6; print('PySide6 OK')"
+echo.
+echo To use this environment:
+echo   1. Update config.txt:
+echo      PYTHON_ENV_PATH = environments/python/python.exe
+echo   2. Run start.bat or start.ps1
 echo.
 goto :END
 
 :ERROR
 echo.
-echo Setup failed! Please check the error messages above.
+echo ============================================================
+echo   Installation Failed!
+echo ============================================================
+echo.
+echo Please check the error messages above.
 echo.
 pause
 exit /b 1
 
 :END
-pause
+echo Press any key to exit...
+pause >nul
+exit /b 0
