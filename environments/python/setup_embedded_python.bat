@@ -172,16 +172,24 @@ del /q "%GET_PIP%" 2>nul
 
 REM Ensure setuptools and wheel are installed first
 echo   Installing build tools (setuptools, wheel)...
+echo   This may take a moment, please wait...
+
+REM First try with upgrade (quiet mode)
 "%PYTHON_EXE%" -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>nul
 
 if errorlevel 1 (
-    echo   [WARNING] Failed to upgrade build tools, but continuing...
-    REM Try installing without upgrade flag
-    "%PYTHON_EXE%" -m pip install setuptools wheel --quiet --no-warn-script-location 2>nul
+    echo   [INFO] Trying without --upgrade flag...
+    REM Try without upgrade (show output for debugging)
+    "%PYTHON_EXE%" -m pip install setuptools wheel --no-warn-script-location
+    
     if errorlevel 1 (
-        echo   [WARNING] Could not install build tools, some packages may fail
+        echo.
+        echo   [WARNING] Could not install build tools
+        echo   This may cause some packages to fail during installation
+        echo   However, many packages have pre-built wheels and will work fine
+        echo.
     ) else (
-        echo   [OK] Build tools installed (without upgrade)
+        echo   [OK] Build tools installed
     )
 ) else (
     echo   [OK] Build tools installed successfully

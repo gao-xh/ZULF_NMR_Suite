@@ -181,16 +181,24 @@ function Install-Pip {
         
         # Install build tools first (critical for building packages from source)
         Write-Host "  Installing build tools (setuptools, wheel)..." -ForegroundColor Gray
+        Write-Host "  This may take a moment, please wait..." -ForegroundColor DarkGray
+        
+        # First try with upgrade (quiet mode)
         & $PYTHON_EXE -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>$null
         
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [WARNING] Failed to upgrade build tools, trying without --upgrade..." -ForegroundColor Yellow
-            & $PYTHON_EXE -m pip install setuptools wheel --quiet --no-warn-script-location 2>$null
+            Write-Host "  [INFO] Trying without --upgrade flag..." -ForegroundColor Yellow
+            # Try without upgrade (show output for debugging)
+            & $PYTHON_EXE -m pip install setuptools wheel --no-warn-script-location
             
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "  [WARNING] Could not install build tools, some packages may fail" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "  [WARNING] Could not install build tools" -ForegroundColor Yellow
+                Write-Host "  This may cause some packages to fail during installation" -ForegroundColor Yellow
+                Write-Host "  However, many packages have pre-built wheels and will work fine" -ForegroundColor Yellow
+                Write-Host ""
             } else {
-                Write-Host "  [OK] Build tools installed (without upgrade)" -ForegroundColor Green
+                Write-Host "  [OK] Build tools installed" -ForegroundColor Green
             }
         } else {
             Write-Host "  [OK] Build tools installed successfully" -ForegroundColor Green
