@@ -197,7 +197,6 @@ Install all dependencies:
 pip install -r requirements.txt
 ```
 
-```
 
 ---
 
@@ -228,7 +227,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ## Author
 
-**Xuehan Gao**  
+Xuehan Gao  
 Ajoy Lab, UC Berkeley  
 October 2025
 
@@ -236,9 +235,9 @@ October 2025
 
 ## Acknowledgments
 
-- **Spinach** - MATLAB toolkit for spin dynamics simulation
-- **PySide6** - Qt bindings for Python
-- **Ajoy Lab** - Research support and scientific guidance
+- Spinach - MATLAB toolkit for spin dynamics simulation
+- PySide6 - Qt bindings for Python
+- Ajoy Lab - Research support and scientific guidance
 
 ---
 
@@ -262,6 +261,6 @@ For questions or issues:
 ---
 
 <p align="center">
-  <strong>ZULF-NMR Suite v0.1.0</strong><br>
+  ZULF-NMR Suite v0.1.0<br>
   Advanced Zero- to Ultra-Low Field NMR Platform
 </p>
