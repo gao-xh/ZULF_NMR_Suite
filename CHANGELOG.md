@@ -4,6 +4,48 @@ All notable changes to the ZULF-NMR Suite will be documented in this file.
 
 ## [Unreleased]
 
+### Added - 2025-10-22
+- **Automatic First-Run Configuration**: Smart environment setup on first launch
+  - Auto-detection using `.setup_complete` marker file
+  - Automatic Python environment configuration
+  - Automatic Spinach/MATLAB setup (if MATLAB installed)
+  - `--setup` flag to force reconfiguration
+  - Both BAT and PowerShell launcher support
+- **Manual MATLAB Path Input**: Fallback option for non-standard installations
+  - Interactive 3-option menu if auto-detection fails
+  - Path validation before accepting
+  - Both setup_spinach.ps1 and setup_spinach.bat support
+- **Enhanced Setup Scripts**:
+  - Expanded core package list from 4 to 15 packages
+  - Added Spinach BAT setup script for Windows users
+  - Improved error handling and user feedback
+  - Better progress indication (Step 1/5, etc.)
+- **Comprehensive Package Management**:
+  - requirements.txt expanded to 100+ packages
+  - Organized into 12 logical categories
+  - Added missing dependencies (PySide6-Addons, python-dateutil, etc.)
+
+### Changed - 2025-10-22
+- **Launcher Scripts**: Major improvements to start.bat and start.ps1
+  - First-run detection and auto-configuration
+  - Cleaner startup flow
+  - Better error messages
+- **README.md**: Updated Quick Start section
+  - Documented automatic first-run setup
+  - Added manual reconfiguration instructions
+  - Clearer installation steps
+- **Setup Scripts**: Optimized for better user experience
+  - Modular function design (PowerShell)
+  - Enhanced MATLAB detection (5 paths + registry)
+  - Installation success tracking
+- **Documentation**: Removed emojis for professional appearance
+- **MATLAB Requirements**: Reverted to R2021a for broader compatibility
+
+### Fixed - 2025-10-22
+- Removed problematic lock file mechanism from launcher
+- Fixed .gitignore to track both PS1 and BAT setup scripts
+- Corrected package versions in requirements.txt
+
 ### Changed - 2025-10-10
 - **Architecture Restructuring**: Modular separation of simulation and data processing
   - Created `src/simulation/` module structure (ui/, core/, backends/, workers/)
