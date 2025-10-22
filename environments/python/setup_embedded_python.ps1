@@ -139,6 +139,10 @@ function Install-Pip {
         & $PYTHON_EXE $getPipPath --quiet --no-warn-script-location
         Remove-Item $getPipPath -Force
         
+        # Install build tools first (critical for building packages from source)
+        Write-Host "  Installing build tools (setuptools, wheel)..." -ForegroundColor Gray
+        & $PYTHON_EXE -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location
+        
         # Verify pip installation
         $pipVersion = & $PYTHON_EXE -m pip --version
         Write-Host "  Installed: $pipVersion" -ForegroundColor Gray
@@ -167,6 +171,9 @@ function Install-Dependencies {
         
         try {
             & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --quiet --no-warn-script-location
+            if ($LASTEXITCODE -ne 0) {
+                throw "pip install returned error code $LASTEXITCODE"
+            }
             Write-Host "  [OK] All dependencies installed successfully" -ForegroundColor Green
             Write-Host ""
             
@@ -181,54 +188,75 @@ function Install-Dependencies {
             return $true
         }
         catch {
-            Write-Host "  [ERROR] Dependency installation failed: $_" -ForegroundColor Red
+            Write-Host "  [ERROR] Full requirements.txt installation failed" -ForegroundColor Red
             Write-Host ""
-            return $false
+            Write-Host "  This may be due to:" -ForegroundColor Yellow
+            Write-Host "    - Network connection issues" -ForegroundColor Gray
+            Write-Host "    - Package compatibility problems" -ForegroundColor Gray
+            Write-Host "    - Missing build dependencies" -ForegroundColor Gray
+            Write-Host ""
+            Write-Host "  Attempting to install core packages only..." -ForegroundColor Yellow
+            Write-Host ""
+            # Fall through to install core packages
         }
     }
-    else {
+    
+    # Install core packages (either requirements.txt not found or failed)
+    if (-not (Test-Path $REQUIREMENTS_FILE)) {
         Write-Host "  [WARNING] requirements.txt not found at:" -ForegroundColor Yellow
         Write-Host "    $REQUIREMENTS_FILE" -ForegroundColor Gray
         Write-Host "  Installing essential packages manually..." -ForegroundColor Yellow
         Write-Host ""
-        
-        # Essential packages for ZULF-NMR Suite
-        $corePackages = @(
-            'PySide6==6.7.3',
-            'PySide6-Addons==6.7.3',
-            'PySide6-Essentials==6.7.3',
-            'numpy==2.3.3',
-            'scipy==1.16.2',
-            'matplotlib==3.10.0',
-            'pandas==2.3.1',
-            'pillow==11.3.0',
-            'matlabengine==25.1.2',
-            'requests==2.32.4',
-            'pyyaml==6.0.2',
-            'colorama==0.4.6',
-            'tqdm==4.67.1',
-            'psutil==5.9.0',
-            'pywin32==311'
-        )
-        
-        $successCount = 0
-        $failCount = 0
-        
-        foreach ($pkg in $corePackages) {
-            Write-Host "    Installing $pkg..." -ForegroundColor Gray
-            try {
-                & $PYTHON_EXE -m pip install $pkg --quiet --no-warn-script-location
+    }
+    
+    # Essential packages for ZULF-NMR Suite
+    $corePackages = @(
+        'PySide6==6.7.3',
+        'PySide6-Addons==6.7.3',
+        'PySide6-Essentials==6.7.3',
+        'numpy==2.3.3',
+        'scipy==1.16.2',
+        'matplotlib==3.10.0',
+        'pandas==2.3.1',
+        'pillow==11.3.0',
+        'matlabengine==25.1.2',
+        'requests==2.32.4',
+        'pyyaml==6.0.2',
+        'colorama==0.4.6',
+        'tqdm==4.67.1',
+        'psutil==5.9.0',
+        'pywin32==311'
+    )
+    
+    $successCount = 0
+    foreach ($package in $corePackages) {
+        Write-Host "    Installing $package..." -ForegroundColor Gray
+        try {
+            & $PYTHON_EXE -m pip install $package --quiet --no-warn-script-location
+            if ($LASTEXITCODE -eq 0) {
                 $successCount++
             }
-            catch {
-                Write-Host "    [WARNING] Failed to install $pkg" -ForegroundColor Yellow
-                $failCount++
-            }
         }
-        
-        Write-Host ""
-        Write-Host "  Installed $successCount/$($corePackages.Count) packages successfully" -ForegroundColor Gray
-        if ($failCount -gt 0) {
+        catch {
+            # Continue with other packages
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "  Installed $successCount/$($corePackages.Count) packages successfully" -ForegroundColor $(if ($successCount -ge 5) { 'Green' } else { 'Yellow' })
+    if ($successCount -lt 5) {
+        Write-Host "  [WARNING] Only $successCount packages installed successfully" -ForegroundColor Yellow
+        Write-Host "  Some features may not work correctly" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "  [OK] Essential packages installation complete" -ForegroundColor Green
+    }
+    Write-Host ""
+    return ($successCount -ge 5)
+}
+
+# Show completion summary
+function Show-Summary {
             Write-Host "  [WARNING] $failCount package(s) failed to install" -ForegroundColor Yellow
         }
         Write-Host "  [OK] Essential packages installation complete" -ForegroundColor Green

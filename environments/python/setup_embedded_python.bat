@@ -117,6 +117,14 @@ echo   Running pip installer...
 "%PYTHON_EXE%" "%GET_PIP%" --quiet --no-warn-script-location
 del /q "%GET_PIP%" 2>nul
 
+REM Ensure setuptools and wheel are installed first
+echo   Installing build tools (setuptools, wheel)...
+"%PYTHON_EXE%" -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location
+
+if errorlevel 1 (
+    echo   [WARNING] Failed to upgrade build tools, but continuing...
+)
+
 echo   [OK] pip installation complete
 echo.
 
@@ -131,9 +139,16 @@ if exist "%REQUIREMENTS_FILE%" (
     "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --quiet --no-warn-script-location
     
     if errorlevel 1 (
-        echo   [ERROR] Dependency installation failed
+        echo   [ERROR] Full requirements.txt installation failed
         echo.
-        goto :ERROR
+        echo   This may be due to:
+        echo     - Network connection issues
+        echo     - Package compatibility problems
+        echo     - Missing build dependencies
+        echo.
+        echo   Attempting to install core packages only...
+        echo.
+        goto :INSTALL_CORE
     )
     
     echo   [OK] All dependencies installed successfully
@@ -147,15 +162,17 @@ if exist "%REQUIREMENTS_FILE%" (
     )
     del "%TEMP%\pip_list.txt" 2>nul
     echo.
-) else (
-    echo   [WARNING] requirements.txt not found at:
-    echo     %REQUIREMENTS_FILE%
-    echo   Installing essential packages manually...
-    echo.
-    
-    REM Essential packages for ZULF-NMR Suite
-    set "PKG_COUNT=0"
-    set "SUCCESS_COUNT=0"
+    goto :SUCCESS
+)
+
+:INSTALL_CORE
+echo   [WARNING] requirements.txt not found or installation failed
+echo   Installing essential packages manually...
+echo.
+
+REM Essential packages for ZULF-NMR Suite
+set "PKG_COUNT=0"
+set "SUCCESS_COUNT=0"
     
     echo     Installing PySide6==6.7.3...
     "%PYTHON_EXE%" -m pip install PySide6==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
@@ -218,11 +235,16 @@ if exist "%REQUIREMENTS_FILE%" (
     set /a PKG_COUNT+=1
     
     echo.
-    echo   Installed !SUCCESS_COUNT!/%PKG_COUNT% packages successfully
-    echo   [OK] Essential packages installation complete
+    echo   Installed !SUCCESS_COUNT!/!PKG_COUNT! packages successfully
+    if !SUCCESS_COUNT! LSS 5 (
+        echo   [WARNING] Only !SUCCESS_COUNT! packages installed successfully
+        echo   Some features may not work correctly
+    ) else (
+        echo   [OK] Essential packages installation complete
+    )
     echo.
-)
 
+:SUCCESS
 REM Success summary
 echo.
 echo ============================================================
