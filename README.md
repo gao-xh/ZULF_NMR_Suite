@@ -1,7 +1,7 @@
-# Multi-System ZULF-NMR Simulator
+# ZULF-NMR Suite
 
-**Version 3.0** | **October 2025**  
-Advanced ZULF-NMR simulation tool with multi-system support
+**Version 0.1.0** | **October 2025**  
+Advanced Zero- to Ultra-Low Field NMR simulation and data processing platform
 
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![PySide6](https://img.shields.io/badge/PySide6-6.7.3-green.svg)](https://pypi.org/project/PySide6/)
@@ -9,193 +9,121 @@ Advanced ZULF-NMR simulation tool with multi-system support
 
 ---
 
-## 📋 Overview
+## Overview
 
-Multi-System ZULF-NMR Simulator is a professional scientific application for simulating Zero- to Ultra-Low Field Nuclear Magnetic Resonance (ZULF-NMR) experiments. It provides a powerful graphical interface for multi-system spectral simulation with advanced features.
+**ZULF-NMR Suite** is a professional scientific application designed for Zero- to Ultra-Low Field Nuclear Magnetic Resonance experiments. It provides an intuitive graphical interface for quantum spin simulation, spectral analysis, and data processing.
 
-### ✨ Key Features
+### Current Features (v0.1.0)
 
-- 🔬 **Multi-System Simulation**: Simulate up to 10 different molecular systems simultaneously
-- 📊 **Real-time Visualization**: Interactive plots with matplotlib integration
-- 💾 **Save/Load Projects**: Complete project state management
-- 🎯 **Gaussian Broadening**: Adjustable spectral line broadening
-- ⚖️ **Weighted Summation**: Combine spectra with custom weights
-- 🔄 **MATLAB Integration**: Optional Spinach toolbox support
-- 🎨 **Modern UI**: Professional PySide6-based interface with custom icons
-- 🚀 **High Performance**: Optimized for large-scale simulations
+- **Quantum Spin Simulation** - High-precision spectral calculations using Spinach/MATLAB backend
+- **Interactive Visualization** - Real-time spectrum plotting with matplotlib integration
+- **Multi-System Analysis** - Weighted spectral summation for mixture analysis
+- **Signal Processing** - Gaussian broadening, zero-filling, and baseline correction
+- **Project Management** - Save/load complete simulation states and presets
+- **Modern Interface** - Professional PySide6-based GUI with custom theming
+
+### Planned Features
+
+- **Experimental Data Processing** - Import and analyze real NMR data
+- **Python Simulation Engine** - Native Python backend for faster prototyping
+- **Cloud Integration** - Remote computation and collaborative workflows
+- **Preset Library** - Extensive molecule and parameter database
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
+### System Requirements
 
-- **Python**: 3.12 or later
-- **MATLAB**: R2021b or later (optional, for Spinach integration)
-- **Operating System**: Windows 10/11
+- **Python**: 3.12+
+- **MATLAB**: R2021b+ (for Spinach backend)
+- **OS**: Windows 10/11, macOS, Linux
 
 ### Installation
 
-1. **Clone or download this repository**
-   ```powershell
-   cd C:\Users\YourName\Desktop
-   git clone <repository-url> ZULF_NMR_Suite
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/gao-xh/ZULF_NMR_Suite.git
    cd ZULF_NMR_Suite
    ```
 
 2. **Install dependencies**
-   ```powershell
+   ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configure environment**
+3. **Launch application**
+   ```bash
+   # Windows
+   start.bat
    
-   Edit `config.txt` and set your Python environment path:
-   ```
-   PYTHON_ENV_PATH = C:/path/to/your/python.exe
-   ```
-
-4. **Launch the application**
-   ```powershell
-   .\start.bat
-   ```
-   
-   Or use PowerShell launcher:
-   ```powershell
+   # PowerShell
    .\start.ps1
-   ```
    
-   Or run directly:
-   ```powershell
+   # Direct Python
    python run.py
    ```
 
 ---
 
-## � Project Structure
+## Basic Usage
+
+### 1. Define Your System
+- Enter isotopes (e.g., `1H, 1H, 13C`)
+- Input chemical shifts (in Hz)
+- Specify J-coupling matrix
+- Set symmetry groups (optional)
+
+### 2. Configure Simulation
+- Set magnetic field strength
+- Define sweep width and resolution
+- Choose zero-filling factor
+
+### 3. Run & Analyze
+- Click "Run Simulation"
+- View real-time spectrum
+- Apply broadening/weighting
+- Save project or export data
+
+---
+
+## Project Structure
 
 ```
 ZULF_NMR_Suite/
-├── run.py                        # Main launcher
-├── Multi_system_spinach_UI.py    # Simulation UI (current)
-├── config.txt                    # Configuration
-├── requirements.txt              # Dependencies
-│
-├── src/                          # Source code
-│   ├── simulation/               # Simulation module
-│   │   ├── ui/                   # Simulation UI
-│   │   ├── core/                 # Simulation engines
-│   │   ├── backends/             # Backend abstraction
-│   │   └── workers/              # Worker threads
-│   │
-│   ├── processing/               # Data processing module
-│   │   ├── ui/                   # Processing UI
-│   │   ├── core/                 # Processing algorithms
-│   │   ├── io/                   # Data I/O
-│   │   └── workers/              # Worker threads
-│   │
-│   ├── ui/                       # Shared UI components
-│   ├── utils/                    # Utilities
-│   └── core/                     # Legacy (being migrated)
-│
-├── data/                         # Data storage
-│   ├── simulation/               # Simulation data
-│   │   ├── presets/              # Built-in presets
-│   │   ├── user_save/            # User-saved data
-│   │   └── output/               # Simulation results
-│   │
-│   └── experimental/             # Experimental data
-│       ├── raw/                  # Raw data from instruments
-│       └── processed/            # Processed data
-│
-├── assets/                       # Application assets
-├── docs/                         # Documentation
-├── tests/                        # Test scripts
-└── network_interface/            # Cloud interface (optional)
+├── src/                    # Source code
+│   ├── simulation/         # Simulation engine & UI
+│   ├── processing/         # Data processing (planned)
+│   ├── ui/                 # Shared UI components
+│   └── utils/              # Helper functions
+├── data/                   # Data storage
+│   ├── simulation/         # Presets & simulation results
+│   └── experimental/       # Raw & processed data (planned)
+├── assets/                 # Icons, images, animations
+├── docs/                   # Documentation
+├── network_interface/      # Cloud integration (optional)
+└── run.py                  # Main entry point
 ```
 
-See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for detailed architecture.
+See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for detailed design.
 
 ---
 
-## �📖 Usage
+## Configuration
 
-### Basic Workflow
+Edit `config.txt` to customize settings:
 
-1. **Define Molecular System**
-   - Enter isotopes (e.g., `1H, 1H, 13C`)
-   - Input chemical shifts
-   - Specify J-coupling matrix
-   - Set symmetry groups (optional)
-
-2. **Configure Simulation**
-   - Magnetic field strength
-   - Sweep width
-   - Number of points
-   - Zero-fill factor
-
-3. **Run Simulation**
-   - Click "Run Simulation" for current system
-   - View real-time progress
-   - Examine spectral output
-
-4. **Multi-System Analysis**
-   - Add more systems (up to 10)
-   - Adjust relative weights
-   - Apply Gaussian broadening
-   - View combined spectrum
-
-5. **Save Your Work**
-   - File → Save Project
-   - Export spectra as CSV
-   - Save presets for reuse
-
----
-
-## �️ Development
-│   ├── animations/               # Splash screen animations
-│   └── icons/                    # Application icons
-│
-├── presets/                      # Preset data
-│   ├── molecules/                # Molecular structures
-│   ├── parameters/               # Parameter sets
-│   └── spectrum/                 # Reference spectra
-│
-├── user_save/                    # User save files
-│   ├── molecules/
-│   └── parameters/
-│
-├── docs/                         # Documentation
-│   ├── development/              # Development notes
-│   └── troubleshooting/          # Troubleshooting guides
-│
-├── scripts/                      # Utility scripts
-│   ├── png_to_ico.py            # Icon converter
-│   ├── fix_qt_conflict.bat      # Qt conflict fixer
-│   └── reinstall_pyside6.bat    # PySide6 reinstaller
-│
-└── tests/                        # Test scripts
-    ├── diagnose_qt.py           # Qt diagnostic tool
-    └── test_icon.py             # Icon loading test
-```
-
----
-
-## ⚙️ Configuration
-
-All application settings are centralized in `config.txt`:
-
-### Application Information
 ```ini
+# Application Info
 APP_NAME = ZULF-NMR Suite
-APP_VERSION = 3.0
-APP_DATE = October 2025
-APP_AUTHOR = Xuehan Gao, Ajoy Lab
-```
+APP_VERSION = 0.1.0
 
-### Python Environment
-```ini
-PYTHON_ENV_PATH = D:/anaconda3/envs/matlab312/python.exe
+# Python Environment
+PYTHON_ENV_PATH = environments/python/python.exe
+
+# MATLAB Settings (optional)
+MATLAB_PATH = C:/Program Files/MATLAB/R2023b
+SPINACH_PATH = C:/Spinach
 ```
 
 ### UI Settings
@@ -269,76 +197,71 @@ Install all dependencies:
 pip install -r requirements.txt
 ```
 
----
-
-## 🎨 Customization
-
-### Adding Application Icons
-
-1. Place your icon in `assets/icons/app_icon.png`
-2. Optionally convert to ICO format:
-   ```powershell
-   pip install Pillow
-   python scripts/png_to_ico.py assets/icons/app_icon.png
-   ```
-3. Restart the application
-
-See [assets/icons/README.md](assets/icons/README.md) for icon guidelines.
-
-### Modifying UI Settings
-
-Edit `config.txt` to change:
-- Window sizes
-- Animation dimensions
-- File paths
-- Application metadata
+```
 
 ---
 
-## 📝 License
+## Development
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### For Developers
+
+See detailed documentation:
+- [ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) - System design
+- [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) - Code organization
+- [DEV_LOG.txt](docs/development/DEV_LOG.txt) - Development notes
+
+### Contributing
+
+Contributions are welcome! Future development priorities:
+1. Experimental data processing module
+2. Native Python simulation engine
+3. Cloud integration for remote computation
+4. Enhanced preset library
 
 ---
 
-## 👥 Authors
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## Author
 
 **Xuehan Gao**  
-Ajoy Lab  
+Ajoy Lab, UC Berkeley  
 October 2025
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **Spinach Library** - MATLAB NMR simulation framework
-- **PySide6 Team** - Qt for Python
-- **Ajoy Lab** - Research support and guidance
-
----
-
-## 📧 Support
-
-For issues, questions, or contributions:
-- Check the [troubleshooting guides](docs/troubleshooting/)
-- Review the [QUICK_REF.md](QUICK_REF.md)
-- See [CHANGELOG.md](CHANGELOG.md) for version history
+- **Spinach** - MATLAB toolkit for spin dynamics simulation
+- **PySide6** - Qt bindings for Python
+- **Ajoy Lab** - Research support and scientific guidance
 
 ---
 
-## 🚀 Version History
+## Documentation
 
-### Version 3.0 (October 2025)
-- ✅ Full configuration parameterization (18 parameters in config.txt)
-- ✅ Universal Python environment support (conda/venv/system)
-- ✅ Icon management system with PNG/ICO support
-- ✅ Qt conflict resolution and troubleshooting guides
-- ✅ Enhanced documentation and project structure
-- ✅ Professional splash screen with animations
-- ✅ Geometry warning fixes
-
-See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+- [Quick Start Guide](docs/QUICK_START.md)
+- [Configuration Guide](docs/setup/CONFIGURATION_GUIDE.md)
+- [Troubleshooting](docs/troubleshooting/)
+- [Feature Documentation](docs/features/)
+- [Release Notes](docs/release/)
 
 ---
 
-**ZULF-NMR Suite v3.0** | Built with ❤️ by Ajoy Lab
+## Support
+
+For questions or issues:
+- Check [QUICK_REF.md](docs/QUICK_REF.md)
+- Report bugs via GitHub Issues
+- See [CHANGELOG.md](CHANGELOG.md) for updates
+
+---
+
+<p align="center">
+  <strong>ZULF-NMR Suite v0.1.0</strong><br>
+  Advanced Zero- to Ultra-Low Field NMR Platform
+</p>
