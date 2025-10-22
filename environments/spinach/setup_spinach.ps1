@@ -44,11 +44,16 @@ else {
     Write-Host "  [WARNING] Spinach not found in environments/spinach/" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  Spinach toolbox is required for MATLAB backend." -ForegroundColor Gray
-    Write-Host "  Please download Spinach from:" -ForegroundColor Gray
-    Write-Host "    https://spindynamics.org/Spinach.php" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  Then copy the Spinach folder to:" -ForegroundColor Gray
-    Write-Host "    $spinachDir" -ForegroundColor DarkGray
+    Write-Host "  Download Instructions:" -ForegroundColor Cyan
+    Write-Host "    1. Visit: https://spindynamics.org/Spinach.php" -ForegroundColor Gray
+    Write-Host "    2. Fill in registration form (name, institution, email)" -ForegroundColor Gray
+    Write-Host "    3. Download the latest stable version" -ForegroundColor Gray
+    Write-Host "    4. Extract the downloaded file" -ForegroundColor Gray
+    Write-Host "    5. Copy entire Spinach folder to:" -ForegroundColor Gray
+    Write-Host "       $spinachDir" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  Note: Spinach is free for academic use" -ForegroundColor Yellow
     Write-Host ""
     
     if ($Interactive) {

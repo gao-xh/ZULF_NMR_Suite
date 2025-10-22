@@ -37,11 +37,16 @@ if exist "%SPINACH_DIR%\kernel" (
     echo   [WARNING] Spinach not found in environments/spinach/
     echo.
     echo   Spinach toolbox is required for MATLAB backend.
-    echo   Please download Spinach from:
-    echo     https://spindynamics.org/Spinach.php
     echo.
-    echo   Then copy the Spinach folder to:
-    echo     %SPINACH_DIR%
+    echo   Download Instructions:
+    echo     1. Visit: https://spindynamics.org/Spinach.php
+    echo     2. Fill in registration form (name, institution, email)
+    echo     3. Download the latest stable version
+    echo     4. Extract the downloaded file
+    echo     5. Copy entire Spinach folder to:
+    echo        %SPINACH_DIR%
+    echo.
+    echo   Note: Spinach is free for academic use
     echo.
     
     choice /C YN /M "  Do you have Spinach installed elsewhere"
