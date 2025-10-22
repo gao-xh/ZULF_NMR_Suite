@@ -257,16 +257,6 @@ function Install-Dependencies {
 
 # Show completion summary
 function Show-Summary {
-            Write-Host "  [WARNING] $failCount package(s) failed to install" -ForegroundColor Yellow
-        }
-        Write-Host "  [OK] Essential packages installation complete" -ForegroundColor Green
-        Write-Host ""
-        return $true
-    }
-}
-
-# Show completion summary
-function Show-Summary {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host "  Installation Complete!" -ForegroundColor Green
