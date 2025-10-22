@@ -9,23 +9,91 @@
 
 Spinach is a powerful MATLAB toolbox for spin dynamics simulations. It is **required** for using the MATLAB backend in ZULF-NMR Suite.
 
-**Important**: Spinach cannot be automatically downloaded due to:
-- License agreement requirements
-- User registration needed
-- Academic use verification
+---
+
+## Download Options
+
+### ✅ Option 1: GitHub Releases (Recommended - No Registration!)
+
+**Direct download from GitHub - fastest and easiest method**
+
+#### Step 1: Visit GitHub Releases
+
+Go to Spinach GitHub releases page:
+```
+https://github.com/IlyaKuprov/Spinach/releases
+```
+
+**Latest stable version**: [Spinach 2.9.2](https://github.com/IlyaKuprov/Spinach/releases/tag/2.9.2)
+
+#### Step 2: Download ZIP
+
+Click on **"Source code (zip)"** to download
+
+**Advantages**:
+- ✅ No registration required
+- ✅ Direct download
+- ✅ Always up to date
+- ✅ Open source - can review code
+
+#### Step 3: Extract Files
+
+Extract the downloaded ZIP to a temporary location:
+
+**Windows**:
+```
+Right-click → Extract All... → Choose a folder
+```
+
+**PowerShell**:
+```powershell
+Expand-Archive -Path "Spinach-2.9.2.zip" -DestinationPath "C:\Temp\Spinach"
+```
+
+#### Step 4: Copy to ZULF-NMR Suite
+
+Copy the **contents** of the extracted `Spinach-2.9.2` folder to:
+```
+ZULF_NMR_Suite/environments/spinach/
+```
+
+**Important**: Copy the **contents**, not the folder itself!
+
+**Correct structure**:
+```
+ZULF_NMR_Suite/
+└── environments/
+    └── spinach/
+        ├── kernel/          ← Core Spinach files
+        ├── examples/        ← Example scripts
+        ├── experiments/     ← Experiment modules
+        └── README.md        ← Spinach documentation
+```
+
+**Incorrect** (don't do this):
+```
+ZULF_NMR_Suite/
+└── environments/
+    └── spinach/
+        └── Spinach-2.9.2/   ← Extra folder layer (wrong!)
+            ├── kernel/
+            └── ...
+```
 
 ---
 
-## Download Instructions
+### Option 2: Official Website (Requires Registration)
 
-### Step 1: Visit Official Website
+If you prefer the official distribution or need support:
+
+#### Step 1: Visit Official Website
 
 Go to the official Spinach website:
 ```
 https://spindynamics.org/Spinach.php
 ```
 
-### Step 2: Register (First Time Only)
+#### Step 2: Register (First Time Only)
 
 Fill in the registration form with:
 - **Name**: Your full name
@@ -35,44 +103,42 @@ Fill in the registration form with:
 
 **Note**: Registration is free for academic use.
 
-### Step 3: Download Spinach
+#### Step 3: Download Spinach
 
 1. After registration, you'll receive a download link
 2. Choose the **latest stable version** (recommended)
 3. Download the ZIP or TAR.GZ file to your computer
 
-**Current Recommended Version**: 2.8.x or later
+#### Step 4: Extract and Copy
 
-### Step 4: Extract Files
+Same as Option 1, steps 3-4.
 
-Extract the downloaded archive to a temporary location:
+---
 
-**Windows**:
-```
-Right-click → Extract All... → Choose a folder
-```
+## Quick Start (PowerShell One-Liner)
 
-**PowerShell**:
+For advanced users, download and extract directly:
+
 ```powershell
-Expand-Archive -Path "Spinach-2.8.x.zip" -DestinationPath "C:\Temp\Spinach"
-```
+# Download latest release
+$url = "https://github.com/IlyaKuprov/Spinach/archive/refs/tags/2.9.2.zip"
+$zipFile = "$env:TEMP\Spinach-2.9.2.zip"
+$extractPath = "$env:TEMP\Spinach-2.9.2"
+$targetPath = ".\environments\spinach"
 
-### Step 5: Copy to ZULF-NMR Suite
+# Download
+Invoke-WebRequest -Uri $url -OutFile $zipFile
 
-Copy the entire Spinach folder to:
-```
-ZULF_NMR_Suite/environments/spinach/
-```
+# Extract
+Expand-Archive -Path $zipFile -DestinationPath $extractPath -Force
 
-**Expected Structure**:
-```
-ZULF_NMR_Suite/
-└── environments/
-    └── spinach/
-        ├── kernel/          ← Core Spinach files
-        ├── examples/        ← Example scripts
-        ├── experiments/     ← Experiment modules
-        └── README.md        ← Spinach documentation
+# Copy contents (not the folder itself)
+Copy-Item -Path "$extractPath\Spinach-2.9.2\*" -Destination $targetPath -Recurse -Force
+
+# Cleanup
+Remove-Item $zipFile, $extractPath -Recurse -Force
+
+Write-Host "Spinach installed successfully!" -ForegroundColor Green
 ```
 
 ---

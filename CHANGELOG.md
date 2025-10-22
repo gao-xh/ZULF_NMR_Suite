@@ -4,6 +4,16 @@ All notable changes to the ZULF-NMR Suite will be documented in this file.
 
 ## [Unreleased]
 
+### Added - 2025-10-22
+- **Automatic Spinach Download**: Setup scripts now automatically download Spinach from GitHub
+  - Direct download from https://github.com/IlyaKuprov/Spinach/releases
+  - No registration required (uses open-source GitHub Releases)
+  - Downloads Spinach v2.9.2 automatically
+  - Automatic extraction and installation to correct directory
+  - Graceful fallback to manual instructions if download fails
+  - Both PowerShell and BAT versions support automatic download
+  - Significantly improves first-time setup experience
+
 ### Fixed - 2025-10-22 (Critical)
 - **Setuptools Dependency Error**: Fixed "Cannot import 'setuptools.build_meta'" error
   - Install setuptools and wheel immediately after pip installation

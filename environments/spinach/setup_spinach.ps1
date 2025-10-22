@@ -41,48 +41,97 @@ if (Test-Path (Join-Path $spinachDir "kernel")) {
     }
 }
 else {
-    Write-Host "  [WARNING] Spinach not found in environments/spinach/" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  Spinach toolbox is required for MATLAB backend." -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "  Download Instructions:" -ForegroundColor Cyan
-    Write-Host "    1. Visit: https://spindynamics.org/Spinach.php" -ForegroundColor Gray
-    Write-Host "    2. Fill in registration form (name, institution, email)" -ForegroundColor Gray
-    Write-Host "    3. Download the latest stable version" -ForegroundColor Gray
-    Write-Host "    4. Extract the downloaded file" -ForegroundColor Gray
-    Write-Host "    5. Copy entire Spinach folder to:" -ForegroundColor Gray
-    Write-Host "       $spinachDir" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  Note: Spinach is free for academic use" -ForegroundColor Yellow
+    Write-Host "  [INFO] Spinach not found in environments/spinach/" -ForegroundColor Yellow
+    Write-Host "  Downloading Spinach from GitHub Releases..." -ForegroundColor Cyan
     Write-Host ""
     
-    if ($Interactive) {
-        $response = Read-Host "  Do you have Spinach installed elsewhere? (y/N)"
-        if ($response -eq 'y' -or $response -eq 'Y') {
-            $source = Read-Host "  Enter Spinach installation path"
-            if (Test-Path $source) {
-                Write-Host "  Copying Spinach..." -ForegroundColor Yellow
-                Copy-Item -Path $source -Destination $spinachDir -Recurse -Force
-                Write-Host "  [OK] Spinach copied successfully" -ForegroundColor Green
-                Write-Host ""
+    # Download Spinach from GitHub
+    $spinachVersion = "2.9.2"
+    $downloadUrl = "https://github.com/IlyaKuprov/Spinach/archive/refs/tags/$spinachVersion.zip"
+    $zipFile = Join-Path $env:TEMP "Spinach-$spinachVersion.zip"
+    $extractPath = Join-Path $env:TEMP "Spinach-$spinachVersion"
+    
+    try {
+        Write-Host "  Downloading Spinach v$spinachVersion..." -ForegroundColor Gray
+        Write-Host "    URL: $downloadUrl" -ForegroundColor DarkGray
+        
+        # Download with progress
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile -UseBasicParsing
+        $ProgressPreference = 'Continue'
+        
+        Write-Host "  [OK] Download completed" -ForegroundColor Green
+        Write-Host ""
+        
+        Write-Host "  Extracting files..." -ForegroundColor Gray
+        Expand-Archive -Path $zipFile -DestinationPath $extractPath -Force
+        
+        # Find the extracted folder (it will be named Spinach-2.9.2)
+        $sourceFolder = Join-Path $extractPath "Spinach-$spinachVersion"
+        
+        if (Test-Path $sourceFolder) {
+            Write-Host "  Copying to installation directory..." -ForegroundColor Gray
+            
+            # Create spinach directory if it doesn't exist
+            if (-not (Test-Path $spinachDir)) {
+                New-Item -ItemType Directory -Path $spinachDir -Force | Out-Null
+            }
+            
+            # Copy contents (not the folder itself)
+            Copy-Item -Path "$sourceFolder\*" -Destination $spinachDir -Recurse -Force
+            
+            Write-Host "  [OK] Spinach installed successfully" -ForegroundColor Green
+            Write-Host ""
+            
+            # Cleanup
+            Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
+            Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        else {
+            throw "Extracted folder not found: $sourceFolder"
+        }
+    }
+    catch {
+        Write-Host "  [ERROR] Failed to download Spinach: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  Manual Download Instructions:" -ForegroundColor Cyan
+        Write-Host "    1. Visit: https://github.com/IlyaKuprov/Spinach/releases/tag/$spinachVersion" -ForegroundColor Gray
+        Write-Host "    2. Download 'Source code (zip)'" -ForegroundColor Gray
+        Write-Host "    3. Extract the ZIP file" -ForegroundColor Gray
+        Write-Host "    4. Copy the contents of Spinach-$spinachVersion folder to:" -ForegroundColor Gray
+        Write-Host "       $spinachDir" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "  Alternative (Official Site):" -ForegroundColor Cyan
+        Write-Host "    Visit: https://spindynamics.org/Spinach.php" -ForegroundColor Gray
+        Write-Host "    (Requires registration)" -ForegroundColor DarkGray
+        Write-Host ""
+        
+        if ($Interactive) {
+            $response = Read-Host "  Do you have Spinach installed elsewhere? (y/N)"
+            if ($response -eq 'y' -or $response -eq 'Y') {
+                $source = Read-Host "  Enter Spinach installation path"
+                if (Test-Path $source) {
+                    Write-Host "  Copying Spinach..." -ForegroundColor Yellow
+                    Copy-Item -Path "$source\*" -Destination $spinachDir -Recurse -Force
+                    Write-Host "  [OK] Spinach copied successfully" -ForegroundColor Green
+                    Write-Host ""
+                }
+                else {
+                    Write-Host "  [ERROR] Path not found: $source" -ForegroundColor Red
+                    Write-Host ""
+                    exit 1
+                }
             }
             else {
-                Write-Host "  [ERROR] Path not found: $source" -ForegroundColor Red
                 Write-Host ""
-                exit 1
+                Write-Host "  Alternative: Use Python backend instead (no MATLAB required)" -ForegroundColor Cyan
+                Write-Host ""
+                exit 0
             }
         }
         else {
-            Write-Host ""
-            Write-Host "  Alternative: Use Python backend instead (no MATLAB required)" -ForegroundColor Cyan
-            Write-Host ""
-            exit 0
+            exit 1
         }
-    }
-    else {
-        Write-Host "  [ERROR] Cannot proceed without Spinach" -ForegroundColor Red
-        Write-Host ""
-        exit 1
     }
 }
 

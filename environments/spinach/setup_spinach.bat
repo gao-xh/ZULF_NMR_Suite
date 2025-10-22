@@ -34,19 +34,74 @@ if exist "%SPINACH_DIR%\kernel" (
     )
     echo.
 ) else (
-    echo   [WARNING] Spinach not found in environments/spinach/
+    echo   [INFO] Spinach not found in environments/spinach/
+    echo   Downloading Spinach from GitHub Releases...
     echo.
-    echo   Spinach toolbox is required for MATLAB backend.
+    
+    REM Download Spinach from GitHub
+    set "SPINACH_VERSION=2.9.2"
+    set "DOWNLOAD_URL=https://github.com/IlyaKuprov/Spinach/archive/refs/tags/%SPINACH_VERSION%.zip"
+    set "ZIP_FILE=%TEMP%\Spinach-%SPINACH_VERSION%.zip"
+    set "EXTRACT_PATH=%TEMP%\Spinach-%SPINACH_VERSION%"
+    
+    echo   Downloading Spinach v%SPINACH_VERSION%...
+    echo     URL: %DOWNLOAD_URL%
+    
+    REM Use PowerShell to download (works on all Windows versions)
+    powershell -Command "& {$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%' -UseBasicParsing}" 2>nul
+    
+    if errorlevel 1 (
+        echo   [ERROR] Failed to download Spinach
+        echo.
+        goto :MANUAL_SPINACH
+    )
+    
+    echo   [OK] Download completed
     echo.
-    echo   Download Instructions:
-    echo     1. Visit: https://spindynamics.org/Spinach.php
-    echo     2. Fill in registration form (name, institution, email)
-    echo     3. Download the latest stable version
-    echo     4. Extract the downloaded file
-    echo     5. Copy entire Spinach folder to:
+    
+    echo   Extracting files...
+    powershell -Command "Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%EXTRACT_PATH%' -Force" 2>nul
+    
+    if errorlevel 1 (
+        echo   [ERROR] Failed to extract files
+        del /F /Q "%ZIP_FILE%" 2>nul
+        goto :MANUAL_SPINACH
+    )
+    
+    echo   Copying to installation directory...
+    
+    REM Create spinach directory if it doesn't exist
+    if not exist "%SPINACH_DIR%" mkdir "%SPINACH_DIR%"
+    
+    REM Copy contents (not the folder itself)
+    xcopy /E /I /Q "%EXTRACT_PATH%\Spinach-%SPINACH_VERSION%\*" "%SPINACH_DIR%"
+    
+    if errorlevel 1 (
+        echo   [ERROR] Failed to copy files
+        goto :MANUAL_SPINACH
+    )
+    
+    echo   [OK] Spinach installed successfully
+    echo.
+    
+    REM Cleanup
+    del /F /Q "%ZIP_FILE%" 2>nul
+    rd /S /Q "%EXTRACT_PATH%" 2>nul
+    
+    goto :SPINACH_DONE
+    
+    :MANUAL_SPINACH
+    echo.
+    echo   Manual Download Instructions:
+    echo     1. Visit: https://github.com/IlyaKuprov/Spinach/releases/tag/%SPINACH_VERSION%
+    echo     2. Download 'Source code (zip)'
+    echo     3. Extract the ZIP file
+    echo     4. Copy the contents of Spinach-%SPINACH_VERSION% folder to:
     echo        %SPINACH_DIR%
     echo.
-    echo   Note: Spinach is free for academic use
+    echo   Alternative (Official Site):
+    echo     Visit: https://spindynamics.org/Spinach.php
+    echo     (Requires registration)
     echo.
     
     choice /C YN /M "  Do you have Spinach installed elsewhere"
@@ -62,7 +117,7 @@ if exist "%SPINACH_DIR%\kernel" (
     
     if exist "!SOURCE_PATH!" (
         echo   Copying Spinach...
-        xcopy /E /I /Q "!SOURCE_PATH!" "%SPINACH_DIR%"
+        xcopy /E /I /Q "!SOURCE_PATH!\*" "%SPINACH_DIR%"
         echo   [OK] Spinach copied successfully
         echo.
     ) else (
@@ -70,6 +125,8 @@ if exist "%SPINACH_DIR%\kernel" (
         echo.
         goto :ERROR
     )
+    
+    :SPINACH_DONE
 )
 
 REM Step 2: Detect MATLAB installation
