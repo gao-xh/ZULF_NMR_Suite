@@ -163,14 +163,28 @@ if not exist "%GET_PIP%" (
 
 echo   Running pip installer...
 "%PYTHON_EXE%" "%GET_PIP%" --quiet --no-warn-script-location
+if errorlevel 1 (
+    echo   [ERROR] pip installation failed!
+    echo.
+    goto :ERROR
+)
 del /q "%GET_PIP%" 2>nul
 
 REM Ensure setuptools and wheel are installed first
 echo   Installing build tools (setuptools, wheel)...
-"%PYTHON_EXE%" -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location
+"%PYTHON_EXE%" -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>nul
 
 if errorlevel 1 (
     echo   [WARNING] Failed to upgrade build tools, but continuing...
+    REM Try installing without upgrade flag
+    "%PYTHON_EXE%" -m pip install setuptools wheel --quiet --no-warn-script-location 2>nul
+    if errorlevel 1 (
+        echo   [WARNING] Could not install build tools, some packages may fail
+    ) else (
+        echo   [OK] Build tools installed (without upgrade)
+    )
+) else (
+    echo   [OK] Build tools installed successfully
 )
 
 echo   [OK] pip installation complete
@@ -341,10 +355,18 @@ echo ============================================================
 echo.
 echo Please check the error messages above.
 echo.
-pause
+echo Common issues:
+echo   - Internet connection problems
+echo   - Insufficient disk space
+echo   - Antivirus blocking Python installation
+echo   - Corrupted download
+echo.
+echo Press any key to exit...
+pause >nul
 exit /b 1
 
 :END
+echo.
 echo Press any key to exit...
 pause >nul
 exit /b 0

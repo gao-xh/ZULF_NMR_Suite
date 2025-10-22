@@ -172,15 +172,35 @@ function Install-Pip {
         
         Write-Host "  Running pip installer..." -ForegroundColor Gray
         & $PYTHON_EXE $getPipPath --quiet --no-warn-script-location
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "pip installation failed with exit code $LASTEXITCODE"
+        }
+        
         Remove-Item $getPipPath -Force
         
         # Install build tools first (critical for building packages from source)
         Write-Host "  Installing build tools (setuptools, wheel)..." -ForegroundColor Gray
-        & $PYTHON_EXE -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location
+        & $PYTHON_EXE -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>$null
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [WARNING] Failed to upgrade build tools, trying without --upgrade..." -ForegroundColor Yellow
+            & $PYTHON_EXE -m pip install setuptools wheel --quiet --no-warn-script-location 2>$null
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  [WARNING] Could not install build tools, some packages may fail" -ForegroundColor Yellow
+            } else {
+                Write-Host "  [OK] Build tools installed (without upgrade)" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "  [OK] Build tools installed successfully" -ForegroundColor Green
+        }
         
         # Verify pip installation
-        $pipVersion = & $PYTHON_EXE -m pip --version
-        Write-Host "  Installed: $pipVersion" -ForegroundColor Gray
+        $pipVersion = & $PYTHON_EXE -m pip --version 2>$null
+        if ($pipVersion) {
+            Write-Host "  Installed: $pipVersion" -ForegroundColor Gray
+        }
         Write-Host "  [OK] pip installation complete" -ForegroundColor Green
         Write-Host ""
         return $true
