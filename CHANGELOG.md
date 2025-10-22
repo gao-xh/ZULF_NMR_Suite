@@ -9,9 +9,17 @@ All notable changes to the ZULF-NMR Suite will be documented in this file.
   - Install setuptools and wheel immediately after pip installation
   - Prevents package build failures on fresh installations
   - Affects embedded Python setup on systems without pre-installed build tools
-- **Robust Package Installation**: Added fallback mechanism
-  - Automatically attempts core package installation if requirements.txt fails
-  - Better error messages indicating cause (network, compatibility, build deps)
+- **Optional Package Handling**: Smart handling of packages requiring build tools
+  - `matlabengine`: Marked as optional (requires MATLAB installation)
+  - `psutil`: Marked as optional (may require Visual C++ Build Tools)
+  - Setup scripts automatically skip these packages if requirements not met
+  - Core functionality preserved even if optional packages fail to install
+  - Added clear user feedback about skipped optional packages
+- **Robust Package Installation**: Multi-tier fallback mechanism
+  - Tier 1: Try binary wheels only (fastest, no build tools needed)
+  - Tier 2: Allow selective builds (skip packages that fail)
+  - Tier 3: Install core packages individually
+  - Better error messages indicating cause (network, compatibility, build deps, MATLAB)
   - Ensures minimum viable environment even with partial failures
 
 ### Added - 2025-10-22

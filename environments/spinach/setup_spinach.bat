@@ -18,7 +18,7 @@ set "SPINACH_DIR=%ROOT_DIR%\environments\spinach"
 set "CONFIG_FILE=%ROOT_DIR%\config.txt"
 
 REM Step 1: Check if Spinach is already installed
-echo Step 1/5: Checking Spinach installation...
+echo Step 1/6: Checking Spinach installation...
 
 if exist "%SPINACH_DIR%\kernel" (
     echo   Spinach found in:
@@ -68,7 +68,8 @@ if exist "%SPINACH_DIR%\kernel" (
 )
 
 REM Step 2: Detect MATLAB installation
-echo Step 2/5: Detecting MATLAB installation...
+REM Step 2: Detect MATLAB installation
+echo Step 2/6: Detecting MATLAB installation...
 
 set "MATLAB_COUNT=0"
 set "MATLAB_SELECTED="
@@ -175,7 +176,8 @@ REM Continue only if we have MATLAB
 if !MATLAB_COUNT!==0 goto :ERROR
 
 REM Step 3: Select MATLAB version
-echo Step 3/5: Selecting MATLAB version...
+REM Step 3: Select MATLAB version
+echo Step 3/6: Selecting MATLAB version...
 
 if !MATLAB_COUNT!==1 (
     set "SELECTED_IDX=1"
@@ -203,7 +205,8 @@ call :GetMatlabVar !SELECTED_IDX!
 echo.
 
 REM Step 4: Configure startup script
-echo Step 4/5: Configuring MATLAB startup script...
+REM Step 4: Configure MATLAB startup script
+echo Step 4/6: Configuring MATLAB startup script...
 
 set "STARTUP_FILE=%ROOT_DIR%\matlab_startup.m"
 set "SPINACH_PATH_MATLAB=%SPINACH_DIR:\=\\%"
@@ -238,8 +241,30 @@ echo   Created: matlab_startup.m
 echo   [OK] Startup script configured
 echo.
 
-REM Step 5: Update config.txt
-echo Step 5/5: Updating configuration...
+REM Step 5: Install MATLAB Engine for Python
+echo Step 5/6: Installing MATLAB Engine for Python...
+
+set "PYTHON_EXE=%ROOT_DIR%\environments\python\python.exe"
+if exist "%PYTHON_EXE%" (
+    echo   Python found: %PYTHON_EXE%
+    echo   Installing matlabengine package...
+    
+    "%PYTHON_EXE%" -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location 2>nul
+    
+    if !errorlevel!==0 (
+        echo   [OK] MATLAB Engine for Python installed successfully
+    ) else (
+        echo   [WARNING] Failed to install MATLAB Engine
+        echo   This is optional - you can still use MATLAB via subprocess
+    )
+) else (
+    echo   [WARNING] Python not found at: %PYTHON_EXE%
+    echo   Please run setup_embedded_python first
+)
+echo.
+
+REM Step 6: Update config.txt
+echo Step 6/6: Updating configuration...
 
 if exist "%CONFIG_FILE%" (
     set "TEMP_CONFIG=%TEMP%\config_temp.txt"

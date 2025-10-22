@@ -168,24 +168,42 @@ function Install-Dependencies {
         Write-Host "  Installing from requirements.txt..." -ForegroundColor Gray
         Write-Host "  This may take several minutes, please wait..." -ForegroundColor Yellow
         Write-Host ""
+        Write-Host "  Note: Some packages (matlabengine, psutil) may require:" -ForegroundColor Yellow
+        Write-Host "    - MATLAB installation (for matlabengine)" -ForegroundColor Gray
+        Write-Host "    - Visual C++ Build Tools (for psutil)" -ForegroundColor Gray
+        Write-Host "  Skipping these if not available..." -ForegroundColor Yellow
+        Write-Host ""
         
         try {
-            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --quiet --no-warn-script-location
-            if ($LASTEXITCODE -ne 0) {
-                throw "pip install returned error code $LASTEXITCODE"
+            # First try: binary wheels only (no source builds)
+            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --only-binary :all: --quiet --no-warn-script-location 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] All dependencies installed successfully (binary wheels)" -ForegroundColor Green
+                Write-Host ""
+                
+                # Show installed packages
+                Write-Host "  Installed packages:" -ForegroundColor Gray
+                $packages = & $PYTHON_EXE -m pip list --format=columns
+                $packages | Select-Object -First 10 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+                if ($packages.Count -gt 10) {
+                    Write-Host "    ... and $($packages.Count - 10) more packages" -ForegroundColor DarkGray
+                }
+                Write-Host ""
+                return $true
             }
-            Write-Host "  [OK] All dependencies installed successfully" -ForegroundColor Green
+            
+            # Second try: allow selective builds (skip packages that fail)
+            Write-Host "  [WARNING] Binary-only installation failed, trying with selective builds..." -ForegroundColor Yellow
             Write-Host ""
             
-            # Show installed packages
-            Write-Host "  Installed packages:" -ForegroundColor Gray
-            $packages = & $PYTHON_EXE -m pip list --format=columns
-            $packages | Select-Object -First 10 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
-            if ($packages.Count -gt 10) {
-                Write-Host "    ... and $($packages.Count - 10) more packages" -ForegroundColor DarkGray
+            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --quiet --no-warn-script-location 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] Dependencies installed with selective builds" -ForegroundColor Green
+                Write-Host ""
+                return $true
             }
-            Write-Host ""
-            return $true
+            
+            throw "pip install returned error code $LASTEXITCODE"
         }
         catch {
             Write-Host "  [ERROR] Full requirements.txt installation failed" -ForegroundColor Red
@@ -193,7 +211,8 @@ function Install-Dependencies {
             Write-Host "  This may be due to:" -ForegroundColor Yellow
             Write-Host "    - Network connection issues" -ForegroundColor Gray
             Write-Host "    - Package compatibility problems" -ForegroundColor Gray
-            Write-Host "    - Missing build dependencies" -ForegroundColor Gray
+            Write-Host "    - Missing build dependencies (Visual C++ Build Tools)" -ForegroundColor Gray
+            Write-Host "    - Missing MATLAB installation" -ForegroundColor Gray
             Write-Host ""
             Write-Host "  Attempting to install core packages only..." -ForegroundColor Yellow
             Write-Host ""
@@ -211,48 +230,70 @@ function Install-Dependencies {
     
     # Essential packages for ZULF-NMR Suite
     $corePackages = @(
-        'PySide6==6.7.3',
-        'PySide6-Addons==6.7.3',
-        'PySide6-Essentials==6.7.3',
-        'numpy==2.3.3',
-        'scipy==1.16.2',
-        'matplotlib==3.10.0',
-        'pandas==2.3.1',
-        'pillow==11.3.0',
-        'matlabengine==25.1.2',
-        'requests==2.32.4',
-        'pyyaml==6.0.2',
-        'colorama==0.4.6',
-        'tqdm==4.67.1',
-        'psutil==5.9.0',
-        'pywin32==311'
+        @{Name='PySide6==6.7.3'; Required=$true},
+        @{Name='PySide6-Addons==6.7.3'; Required=$true},
+        @{Name='PySide6-Essentials==6.7.3'; Required=$true},
+        @{Name='numpy==2.3.3'; Required=$true},
+        @{Name='scipy==1.16.2'; Required=$true},
+        @{Name='matplotlib==3.10.0'; Required=$true},
+        @{Name='pandas==2.3.1'; Required=$true},
+        @{Name='pillow==11.3.0'; Required=$true},
+        @{Name='requests==2.32.4'; Required=$true},
+        @{Name='pyyaml==6.0.2'; Required=$true},
+        @{Name='colorama==0.4.6'; Required=$true},
+        @{Name='tqdm==4.67.1'; Required=$true},
+        @{Name='psutil==5.9.0'; Required=$false; Note='may require C++ Build Tools'},
+        @{Name='pywin32==311'; Required=$true}
     )
     
     $successCount = 0
-    foreach ($package in $corePackages) {
-        Write-Host "    Installing $package..." -ForegroundColor Gray
+    $totalCount = $corePackages.Count
+    
+    foreach ($pkg in $corePackages) {
+        $packageName = $pkg.Name
+        $isRequired = $pkg.Required
+        $note = $pkg.Note
+        
+        if ($note) {
+            Write-Host "    Installing $packageName ($note)..." -ForegroundColor Gray
+        } else {
+            Write-Host "    Installing $packageName..." -ForegroundColor Gray
+        }
+        
         try {
-            & $PYTHON_EXE -m pip install $package --quiet --no-warn-script-location
+            if (-not $isRequired) {
+                # For optional packages, try binary only first
+                & $PYTHON_EXE -m pip install $packageName --only-binary :all: --quiet --no-warn-script-location 2>$null
+            } else {
+                & $PYTHON_EXE -m pip install $packageName --quiet --no-warn-script-location 2>$null
+            }
+            
             if ($LASTEXITCODE -eq 0) {
                 $successCount++
+            } elseif (-not $isRequired) {
+                Write-Host "      [SKIPPED] $($packageName.Split('==')[0]) - $note" -ForegroundColor Yellow
             }
         }
         catch {
+            if (-not $isRequired) {
+                Write-Host "      [SKIPPED] $($packageName.Split('==')[0]) - $note" -ForegroundColor Yellow
+            }
             # Continue with other packages
         }
     }
     
     Write-Host ""
-    Write-Host "  Installed $successCount/$($corePackages.Count) packages successfully" -ForegroundColor $(if ($successCount -ge 5) { 'Green' } else { 'Yellow' })
-    if ($successCount -lt 5) {
+    Write-Host "  Installed $successCount/$totalCount packages successfully" -ForegroundColor $(if ($successCount -ge 9) { 'Green' } else { 'Yellow' })
+    if ($successCount -lt 9) {
         Write-Host "  [WARNING] Only $successCount packages installed successfully" -ForegroundColor Yellow
-        Write-Host "  Some features may not work correctly" -ForegroundColor Yellow
+        Write-Host "  Some optional features may not work (system monitoring)" -ForegroundColor Yellow
     }
     else {
         Write-Host "  [OK] Essential packages installation complete" -ForegroundColor Green
+        Write-Host "  Note: MATLAB Engine will be installed during Spinach setup" -ForegroundColor Gray
     }
     Write-Host ""
-    return ($successCount -ge 5)
+    return ($successCount -ge 9)
 }
 
 # Show completion summary

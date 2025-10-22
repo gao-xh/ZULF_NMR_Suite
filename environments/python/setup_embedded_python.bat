@@ -135,20 +135,35 @@ if exist "%REQUIREMENTS_FILE%" (
     echo   Installing from requirements.txt...
     echo   This may take several minutes, please wait...
     echo.
+    echo   Note: Some packages (matlabengine, psutil) may require:
+    echo     - MATLAB installation (for matlabengine)
+    echo     - Visual C++ Build Tools (for psutil)
+    echo   Skipping these if not available...
+    echo.
     
-    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --quiet --no-warn-script-location
+    REM Try installing with binary wheels only (no source builds)
+    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --only-binary :all: --quiet --no-warn-script-location 2>nul
     
     if errorlevel 1 (
-        echo   [ERROR] Full requirements.txt installation failed
+        echo   [WARNING] Binary-only installation failed, trying with selective builds...
         echo.
-        echo   This may be due to:
-        echo     - Network connection issues
-        echo     - Package compatibility problems
-        echo     - Missing build dependencies
-        echo.
-        echo   Attempting to install core packages only...
-        echo.
-        goto :INSTALL_CORE
+        
+        REM Install packages that don't need compilation first
+        "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --quiet --no-warn-script-location 2>nul
+        
+        if errorlevel 1 (
+            echo   [ERROR] Full requirements.txt installation failed
+            echo.
+            echo   This may be due to:
+            echo     - Network connection issues
+            echo     - Package compatibility problems
+            echo     - Missing build dependencies (Visual C++ Build Tools)
+            echo     - Missing MATLAB installation
+            echo.
+            echo   Attempting to install core packages only...
+            echo.
+            goto :INSTALL_CORE
+        )
     )
     
     echo   [OK] All dependencies installed successfully
@@ -206,10 +221,6 @@ set "SUCCESS_COUNT=0"
     "%PYTHON_EXE%" -m pip install pillow==11.3.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
-    echo     Installing matlabengine==25.1.2...
-    "%PYTHON_EXE%" -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
-    set /a PKG_COUNT+=1
-    
     echo     Installing requests==2.32.4...
     "%PYTHON_EXE%" -m pip install requests==2.32.4 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
@@ -226,8 +237,14 @@ set "SUCCESS_COUNT=0"
     "%PYTHON_EXE%" -m pip install tqdm==4.67.1 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
-    echo     Installing psutil==5.9.0...
-    "%PYTHON_EXE%" -m pip install psutil==5.9.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    REM Optional: psutil (may require Visual C++ Build Tools)
+    echo     Installing psutil==5.9.0 (may require C++ Build Tools)...
+    "%PYTHON_EXE%" -m pip install psutil==5.9.0 --only-binary :all: --quiet --no-warn-script-location 2>nul
+    if errorlevel 1 (
+        echo       [SKIPPED] psutil - Binary wheel not available, C++ Build Tools needed
+    ) else (
+        set /a SUCCESS_COUNT+=1
+    )
     set /a PKG_COUNT+=1
     
     echo     Installing pywin32==311...

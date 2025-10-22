@@ -22,7 +22,7 @@ $spinachDir = Join-Path $rootDir "environments\spinach"
 $configFile = Join-Path $rootDir "config.txt"
 
 # Step 1: Check if Spinach is already installed
-Write-Host "Step 1/5: Checking Spinach installation..." -ForegroundColor Cyan
+Write-Host "Step 1/6: Checking Spinach installation..." -ForegroundColor Cyan
 
 if (Test-Path (Join-Path $spinachDir "kernel")) {
     Write-Host "  Spinach found in:" -ForegroundColor Gray
@@ -82,7 +82,8 @@ else {
 }
 
 # Step 2: Detect MATLAB installation
-Write-Host "Step 2/5: Detecting MATLAB installation..." -ForegroundColor Cyan
+# Step 2: Detect MATLAB installation
+Write-Host "Step 2/6: Detecting MATLAB installation..." -ForegroundColor Cyan
 
 $matlabLocations = @()
 
@@ -218,7 +219,8 @@ for ($i = 0; $i -lt $matlabLocations.Count; $i++) {
 Write-Host ""
 
 # Step 3: Select MATLAB version
-Write-Host "Step 3/5: Selecting MATLAB version..." -ForegroundColor Cyan
+# Step 3: Select MATLAB version
+Write-Host "Step 3/6: Selecting MATLAB version..." -ForegroundColor Cyan
 
 $selectedMatlab = $null
 
@@ -268,7 +270,8 @@ else {
 Write-Host ""
 
 # Step 4: Configure startup script
-Write-Host "Step 4/5: Configuring MATLAB startup script..." -ForegroundColor Cyan
+# Step 4: Configure MATLAB startup script
+Write-Host "Step 4/6: Configuring MATLAB startup script..." -ForegroundColor Cyan
 
 $startupScript = @"
 % ZULF-NMR Suite - MATLAB Startup Script
@@ -303,8 +306,39 @@ Write-Host "  [OK] Startup script configured" -ForegroundColor Green
 
 Write-Host ""
 
-# Step 5: Update config.txt
-Write-Host "Step 5/5: Updating configuration..." -ForegroundColor Cyan
+# Step 5: Install MATLAB Engine for Python
+Write-Host "Step 5/6: Installing MATLAB Engine for Python..." -ForegroundColor Cyan
+
+$pythonExe = Join-Path $rootDir "environments\python\python.exe"
+if (Test-Path $pythonExe) {
+    Write-Host "  Python found: $pythonExe" -ForegroundColor Gray
+    Write-Host "  Installing matlabengine package..." -ForegroundColor Gray
+    
+    try {
+        # Try installing matlabengine with the detected MATLAB installation
+        & $pythonExe -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location 2>$null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  [OK] MATLAB Engine for Python installed successfully" -ForegroundColor Green
+        } else {
+            Write-Host "  [WARNING] Failed to install MATLAB Engine" -ForegroundColor Yellow
+            Write-Host "  This is optional - you can still use MATLAB via subprocess" -ForegroundColor Gray
+        }
+    }
+    catch {
+        Write-Host "  [WARNING] Failed to install MATLAB Engine" -ForegroundColor Yellow
+        Write-Host "  Error: $_" -ForegroundColor DarkGray
+        Write-Host "  This is optional - you can still use MATLAB via subprocess" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  [WARNING] Python not found at: $pythonExe" -ForegroundColor Yellow
+    Write-Host "  Please run setup_embedded_python first" -ForegroundColor Gray
+}
+
+Write-Host ""
+
+# Step 6: Update config.txt
+Write-Host "Step 6/6: Updating configuration..." -ForegroundColor Cyan
 
 if (Test-Path $configFile) {
     $config = Get-Content $configFile
