@@ -60,21 +60,43 @@ echo   STEP 2: Configure Python Environment
 echo ============================================================
 echo.
 
-REM Enable site packages
+REM Configure Python path file
 set "PTH_FOUND=0"
 for %%F in ("%EMBED_DIR%python3*._pth") do (
     set "PTH_FOUND=1"
+    set "PTH_FILE=%%F"
+    
+    REM Check if Scripts is already in the path
+    findstr /C:"Scripts" "%%F" >nul
+    if errorlevel 1 (
+        REM Add Scripts directory before 'import site'
+        powershell -NoProfile -Command "& { $content = Get-Content '%%F'; $lastLine = $content[-1]; $content = $content[0..($content.Length-2)] + 'Scripts' + $lastLine; $content | Set-Content '%%F' }"
+        echo   Added Scripts directory to path
+    )
+    
+    REM Enable site packages
     findstr /C:"import site" "%%F" >nul
     if errorlevel 1 (
         echo import site>> "%%F"
-        echo   Enabled site packages: %%~nxF
-    ) else (
-        echo   Site packages already enabled: %%~nxF
+        echo   Enabled site packages
     )
+    
+    echo   Configured: %%~nxF
+    echo   Contents:
+    type "%%F" | findstr /n "^"
+    echo.
 )
 
 if !PTH_FOUND!==0 (
-    echo   [WARNING] No ._pth file found
+    echo   [WARNING] No ._pth file found, creating one...
+    set "PTH_FILE=%EMBED_DIR%python312._pth"
+    (
+        echo python312.zip
+        echo .
+        echo Scripts
+        echo import site
+    ) > "!PTH_FILE!"
+    echo   Created: python312._pth
 )
 echo.
 
@@ -99,8 +121,26 @@ if errorlevel 1 (
     )
     
     "%PYTHON_EXE%" "%EMBED_DIR%get-pip.py"
+    if errorlevel 1 (
+        echo   [ERROR] pip installation failed!
+        pause
+        exit /b 1
+    )
     del /q "%EMBED_DIR%get-pip.py"
     echo.
+    
+    REM Verify pip installation
+    "%PYTHON_EXE%" -m pip --version >nul 2>&1
+    if errorlevel 1 (
+        echo   [ERROR] pip module not found after installation!
+        echo   This may be due to:
+        echo     - Antivirus blocking pip installation
+        echo     - Corrupted Python installation
+        echo     - Missing Scripts directory in Python path
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 echo   [OK] pip is ready

@@ -220,15 +220,30 @@ echo Step 3/5: Configuring Python environment...
 set "PTH_FOUND=0"
 for %%F in ("%EMBED_DIR%python3*._pth") do (
     set "PTH_FOUND=1"
-    powershell -NoProfile -Command "& {(Get-Content '%%F') -replace '#import site', 'import site' | Set-Content '%%F'}"
-    echo   Enabled site packages: %%~nxF
+    set "PTH_FILE=%%F"
+    
+    REM Enable site packages and add Scripts directory
+    powershell -NoProfile -Command "& { $content = Get-Content '%%F'; $content = $content -replace '#import site', 'import site'; if ($content -notcontains 'Scripts') { $content = @($content[0..($content.Length-2)] + 'Scripts' + $content[-1]) }; $content | Set-Content '%%F' }"
+    
+    echo   Configured: %%~nxF
+    echo   Contents:
+    type "%%F" | findstr /n "^"
+    echo.
 )
 
 if !PTH_FOUND!==0 (
-    echo   [WARNING] No ._pth file found
-) else (
-    echo   [OK] Configuration complete
+    echo   [WARNING] No ._pth file found, creating one...
+    set "PTH_FILE=%EMBED_DIR%python312._pth"
+    (
+        echo python312.zip
+        echo .
+        echo Scripts
+        echo import site
+    ) > "!PTH_FILE!"
+    echo   Created: python312._pth
 )
+
+echo   [OK] Configuration complete
 echo.
 
 :INSTALL_PIP
@@ -252,6 +267,21 @@ if errorlevel 1 (
     goto :ERROR
 )
 del /q "%GET_PIP%" 2>nul
+
+REM Verify pip is actually working
+echo   Verifying pip installation...
+"%PYTHON_EXE%" -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo   [ERROR] pip module not found after installation!
+    echo   This may be due to:
+    echo     - Antivirus blocking pip installation
+    echo     - Corrupted Python installation
+    echo     - Insufficient permissions
+    echo.
+    goto :ERROR
+)
+echo   [OK] pip verified successfully
+echo.
 
 REM Ensure setuptools and wheel are installed first
 echo   Installing build tools (setuptools, wheel)...
@@ -279,6 +309,15 @@ echo.
 :INSTALL_DEPENDENCIES
 REM Step 5: Install dependencies
 echo Step 5/5: Installing dependencies...
+
+REM Verify pip is available before installing packages
+"%PYTHON_EXE%" -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo   [ERROR] pip is not available! Cannot install packages.
+    echo   Please run the full setup to install pip first.
+    echo.
+    goto :ERROR
+)
 
 if exist "%REQUIREMENTS_FILE%" (
     echo   Installing from requirements.txt...
@@ -335,6 +374,15 @@ if exist "%REQUIREMENTS_FILE%" (
 echo   [WARNING] requirements.txt not found or installation failed
 echo   Installing essential packages manually...
 echo.
+
+REM Verify pip is available before installing packages
+"%PYTHON_EXE%" -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo   [ERROR] pip is not available! Cannot install packages.
+    echo   Please run the full setup to install pip first.
+    echo.
+    goto :ERROR
+)
 
 REM Essential packages for ZULF-NMR Suite
 set "PKG_COUNT=0"
