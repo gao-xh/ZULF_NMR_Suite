@@ -171,7 +171,9 @@ function Install-Pip {
         $ProgressPreference = 'Continue'
         
         Write-Host "  Running pip installer..." -ForegroundColor Gray
-        & $PYTHON_EXE $getPipPath --quiet --no-warn-script-location
+        Write-Host ""
+        & $PYTHON_EXE $getPipPath
+        Write-Host ""
         
         if ($LASTEXITCODE -ne 0) {
             throw "pip installation failed with exit code $LASTEXITCODE"
@@ -182,14 +184,18 @@ function Install-Pip {
         # Install build tools first (critical for building packages from source)
         Write-Host "  Installing build tools (setuptools, wheel)..." -ForegroundColor Gray
         Write-Host "  This may take a moment, please wait..." -ForegroundColor DarkGray
+        Write-Host ""
         
-        # First try with upgrade (quiet mode)
-        & $PYTHON_EXE -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>$null
+        # First try with upgrade
+        & $PYTHON_EXE -m pip install --upgrade setuptools wheel
+        Write-Host ""
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  [INFO] Trying without --upgrade flag..." -ForegroundColor Yellow
-            # Try without upgrade (show output for debugging)
-            & $PYTHON_EXE -m pip install setuptools wheel --no-warn-script-location
+            Write-Host ""
+            # Try without upgrade
+            & $PYTHON_EXE -m pip install setuptools wheel
+            Write-Host ""
             
             if ($LASTEXITCODE -ne 0) {
                 Write-Host ""
@@ -239,7 +245,9 @@ function Install-Dependencies {
         
         try {
             # First try: binary wheels only (no source builds)
-            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --only-binary :all: --quiet --no-warn-script-location 2>$null
+            Write-Host ""
+            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --only-binary :all:
+            Write-Host ""
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "  [OK] All dependencies installed successfully (binary wheels)" -ForegroundColor Green
                 Write-Host ""
@@ -259,7 +267,8 @@ function Install-Dependencies {
             Write-Host "  [WARNING] Binary-only installation failed, trying with selective builds..." -ForegroundColor Yellow
             Write-Host ""
             
-            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE --quiet --no-warn-script-location 2>$null
+            & $PYTHON_EXE -m pip install -r $REQUIREMENTS_FILE
+            Write-Host ""
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "  [OK] Dependencies installed with selective builds" -ForegroundColor Green
                 Write-Host ""
@@ -326,9 +335,9 @@ function Install-Dependencies {
         try {
             if (-not $isRequired) {
                 # For optional packages, try binary only first
-                & $PYTHON_EXE -m pip install $packageName --only-binary :all: --quiet --no-warn-script-location 2>$null
+                & $PYTHON_EXE -m pip install $packageName --only-binary :all:
             } else {
-                & $PYTHON_EXE -m pip install $packageName --quiet --no-warn-script-location 2>$null
+                & $PYTHON_EXE -m pip install $packageName
             }
             
             if ($LASTEXITCODE -eq 0) {

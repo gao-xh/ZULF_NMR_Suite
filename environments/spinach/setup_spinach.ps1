@@ -381,10 +381,12 @@ $pythonExe = Join-Path $rootDir "environments\python\python.exe"
 if (Test-Path $pythonExe) {
     Write-Host "  Python found: $pythonExe" -ForegroundColor Gray
     Write-Host "  Installing matlabengine package..." -ForegroundColor Gray
+    Write-Host ""
     
     try {
         # Try installing matlabengine with the detected MATLAB installation
-        & $pythonExe -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location 2>$null
+        & $pythonExe -m pip install matlabengine==25.1.2
+        Write-Host ""
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  [OK] MATLAB Engine for Python installed successfully" -ForegroundColor Green

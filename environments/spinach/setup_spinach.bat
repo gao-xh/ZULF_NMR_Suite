@@ -323,12 +323,15 @@ set "PYTHON_EXE=%ROOT_DIR%\environments\python\python.exe"
 if exist "%PYTHON_EXE%" (
     echo   Python found: %PYTHON_EXE%
     echo   Installing matlabengine package...
+    echo.
     
-    "%PYTHON_EXE%" -m pip install matlabengine==25.1.2 --quiet --no-warn-script-location 2>nul
+    "%PYTHON_EXE%" -m pip install matlabengine==25.1.2
     
     if !errorlevel!==0 (
+        echo.
         echo   [OK] MATLAB Engine for Python installed successfully
     ) else (
+        echo.
         echo   [WARNING] Failed to install MATLAB Engine
         echo   This is optional - you can still use MATLAB via subprocess
     )
