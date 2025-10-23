@@ -137,7 +137,15 @@ function Configure-Python {
     $pthFiles = Get-ChildItem -Path $EMBED_DIR -Filter "python3*._pth"
     
     if ($pthFiles.Count -eq 0) {
-        Write-Host "  [WARNING] No ._pth file found" -ForegroundColor Yellow
+        Write-Host "  [WARNING] No ._pth file found, creating one..." -ForegroundColor Yellow
+        $pthFile = Join-Path $EMBED_DIR "python312._pth"
+        @(
+            "python312.zip",
+            ".",
+            "Scripts",
+            "import site"
+        ) | Set-Content -Path $pthFile
+        Write-Host "  Created: python312._pth" -ForegroundColor Gray
         Write-Host ""
         return $true
     }
@@ -145,9 +153,22 @@ function Configure-Python {
     foreach ($file in $pthFiles) {
         try {
             $content = Get-Content $file.FullName
-            $newContent = $content -replace '#import site', 'import site'
-            Set-Content -Path $file.FullName -Value $newContent
-            Write-Host "  Enabled site packages: $($file.Name)" -ForegroundColor Gray
+            
+            # Add Scripts directory if not present
+            if ($content -notcontains 'Scripts') {
+                $lastLine = $content[-1]
+                $content = $content[0..($content.Length-2)] + 'Scripts' + $lastLine
+            }
+            
+            # Enable site packages
+            $content = $content -replace '#import site', 'import site'
+            
+            Set-Content -Path $file.FullName -Value $content
+            
+            Write-Host "  Configured: $($file.Name)" -ForegroundColor Gray
+            Write-Host "  Contents:" -ForegroundColor Gray
+            Get-Content $file.FullName | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+            Write-Host ""
         }
         catch {
             Write-Host "  [WARNING] Failed to configure $($file.Name): $_" -ForegroundColor Yellow
@@ -211,10 +232,25 @@ function Install-Pip {
         }
         
         # Verify pip installation
-        $pipVersion = & $PYTHON_EXE -m pip --version 2>$null
-        if ($pipVersion) {
-            Write-Host "  Installed: $pipVersion" -ForegroundColor Gray
+        Write-Host "  Verifying pip installation..." -ForegroundColor Gray
+        try {
+            & $PYTHON_EXE -m pip --version 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "pip module not found"
+            }
+            $pipVersion = & $PYTHON_EXE -m pip --version 2>$null
+            Write-Host "  [OK] pip verified: $pipVersion" -ForegroundColor Green
         }
+        catch {
+            Write-Host "  [ERROR] pip module not found after installation!" -ForegroundColor Red
+            Write-Host "  This may be due to:" -ForegroundColor Yellow
+            Write-Host "    - Antivirus blocking pip installation" -ForegroundColor Yellow
+            Write-Host "    - Corrupted Python installation" -ForegroundColor Yellow
+            Write-Host "    - Missing Scripts directory in Python path" -ForegroundColor Yellow
+            Write-Host ""
+            return $false
+        }
+        
         Write-Host "  [OK] pip installation complete" -ForegroundColor Green
         Write-Host ""
         return $true
@@ -232,6 +268,20 @@ function Install-Pip {
 # Install dependencies
 function Install-Dependencies {
     Write-Host "Step 5/5: Installing dependencies..." -ForegroundColor Cyan
+    
+    # Verify pip is available before installing packages
+    try {
+        & $PYTHON_EXE -m pip --version 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "pip not available"
+        }
+    }
+    catch {
+        Write-Host "  [ERROR] pip is not available! Cannot install packages." -ForegroundColor Red
+        Write-Host "  Please run the full setup to install pip first." -ForegroundColor Yellow
+        Write-Host ""
+        return $false
+    }
     
     if (Test-Path $REQUIREMENTS_FILE) {
         Write-Host "  Installing from requirements.txt..." -ForegroundColor Gray
