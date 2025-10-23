@@ -47,7 +47,7 @@ if exist "%PYTHON_EXE%" (
         echo.
         echo [WARNING] pip is not installed, installation required
         echo.
-        goto :CONFIGURE_PYTHON
+        goto :INSTALL_PIP
     )
     
     REM Check if essential packages are installed
@@ -56,7 +56,7 @@ if exist "%PYTHON_EXE%" (
         echo.
         echo [WARNING] Essential packages missing, installation required
         echo.
-        goto :CONFIGURE_PYTHON
+        goto :INSTALL_DEPENDENCIES
     )
     
     echo   [OK] Python and packages are ready
@@ -80,8 +80,6 @@ if exist "%PYTHON_EXE%" (
     )
     echo.
 )
-
-:CONFIGURE_PYTHON
 
 REM Step 1: Download
 echo Step 1/5: Downloading embedded Python...
@@ -233,6 +231,7 @@ if !PTH_FOUND!==0 (
 )
 echo.
 
+:INSTALL_PIP
 REM Step 4: Install pip
 echo Step 4/5: Installing pip...
 
@@ -277,6 +276,7 @@ if %SETUP_EXIT_CODE% NEQ 0 (
 echo   [OK] pip installation complete
 echo.
 
+:INSTALL_DEPENDENCIES
 REM Step 5: Install dependencies
 echo Step 5/5: Installing dependencies...
 
