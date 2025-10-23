@@ -83,7 +83,7 @@ if exist "%SPINACH_DIR%\kernel" (
     
     echo   Copying to installation directory...
     
-    REM Create spinach directory if it doesn't exist
+    REM Create spinach directory if it does not exist
     if not exist "%SPINACH_DIR%" mkdir "%SPINACH_DIR%"
     
     REM Copy contents (not the folder itself)

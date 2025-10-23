@@ -69,7 +69,8 @@ REM Try multiple download sources
 set "DOWNLOAD_SUCCESS=0"
 
 echo   Trying: %DOWNLOAD_NAME_1%
-powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_1%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+echo.
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_1%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
     set "DOWNLOAD_SUCCESS=1"
     echo   [OK] Downloaded from %DOWNLOAD_NAME_1%
@@ -79,7 +80,8 @@ if exist "%ZIP_FILE%" (
 echo   [FAILED] %DOWNLOAD_NAME_1%
 echo.
 echo   Trying: %DOWNLOAD_NAME_2%
-powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_2%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+echo.
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_2%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
     set "DOWNLOAD_SUCCESS=1"
     echo   [OK] Downloaded from %DOWNLOAD_NAME_2%
@@ -89,7 +91,8 @@ if exist "%ZIP_FILE%" (
 echo   [FAILED] %DOWNLOAD_NAME_2%
 echo.
 echo   Trying: %DOWNLOAD_NAME_3%
-powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_3%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30 } catch { exit 1 }}" 2>nul
+echo.
+powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_3%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
     set "DOWNLOAD_SUCCESS=1"
     echo   [OK] Downloaded from %DOWNLOAD_NAME_3%
