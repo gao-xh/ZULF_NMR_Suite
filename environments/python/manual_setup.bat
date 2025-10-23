@@ -124,31 +124,83 @@ if exist "%REQUIREMENTS_FILE%" (
     echo This may take several minutes...
     echo.
     
-    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%"
+    REM Try binary-only first
+    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --only-binary :all:
     
     if errorlevel 1 (
         echo.
-        echo [WARNING] Some packages failed to install
-        echo Installing core packages only...
+        echo   Binary-only installation failed, trying with builds...
         echo.
-        goto :INSTALL_CORE
+        
+        REM Try full install
+        "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%"
+        
+        if errorlevel 1 (
+            echo.
+            echo   [WARNING] Full requirements.txt installation failed
+            echo   Installing core packages only...
+            echo.
+            goto :INSTALL_CORE
+        )
     )
     
     echo.
     echo [OK] All packages installed successfully
+    echo.
     goto :SUCCESS
+) else (
+    echo [WARNING] requirements.txt not found at:
+    echo   %REQUIREMENTS_FILE%
+    echo.
+    echo Installing core packages manually...
+    echo.
+    goto :INSTALL_CORE
 )
 
 :INSTALL_CORE
 echo Installing essential packages...
 echo.
 
+echo   - PySide6 (GUI framework)...
 "%PYTHON_EXE%" -m pip install PySide6==6.7.3
-"%PYTHON_EXE%" -m pip install numpy scipy matplotlib pandas
-"%PYTHON_EXE%" -m pip install pillow requests pyyaml colorama tqdm pywin32
+if errorlevel 1 (
+    echo     [FAILED] PySide6 installation failed
+) else (
+    echo     [OK] PySide6 installed
+)
+
+echo   - NumPy (numerical computing)...
+"%PYTHON_EXE%" -m pip install numpy==2.3.3
+
+echo   - SciPy (scientific computing)...
+"%PYTHON_EXE%" -m pip install scipy==1.16.2
+
+echo   - Matplotlib (plotting)...
+"%PYTHON_EXE%" -m pip install matplotlib==3.10.0
+
+echo   - Pandas (data analysis)...
+"%PYTHON_EXE%" -m pip install pandas==2.3.1
+
+echo   - Pillow (image processing)...
+"%PYTHON_EXE%" -m pip install pillow==11.3.0
+
+echo   - PyYAML (configuration)...
+"%PYTHON_EXE%" -m pip install pyyaml==6.0.2
+
+echo   - Colorama (colored output)...
+"%PYTHON_EXE%" -m pip install colorama==0.4.6
+
+echo   - tqdm (progress bars)...
+"%PYTHON_EXE%" -m pip install tqdm==4.67.1
+
+echo   - pywin32 (Windows integration)...
+"%PYTHON_EXE%" -m pip install pywin32==311
+
+echo   - Requests (HTTP library)...
+"%PYTHON_EXE%" -m pip install requests==2.32.4
 
 echo.
-echo [OK] Core packages installed
+echo [OK] Core packages installation completed
 echo.
 
 :SUCCESS
