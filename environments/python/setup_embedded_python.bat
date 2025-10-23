@@ -222,8 +222,24 @@ for %%F in ("%EMBED_DIR%python3*._pth") do (
     set "PTH_FOUND=1"
     set "PTH_FILE=%%F"
     
-    REM Enable site packages and add Scripts directory
-    powershell -NoProfile -Command "& { $content = Get-Content '%%F'; $content = $content -replace '#import site', 'import site'; if ($content -notcontains 'Scripts') { $content = @($content[0..($content.Length-2)] + 'Scripts' + $content[-1]) }; $content | Set-Content '%%F' }"
+    REM Read current content
+    set "HAS_SCRIPTS=0"
+    set "HAS_SITE=0"
+    findstr /C:"Scripts" "%%F" >nul 2>&1 && set "HAS_SCRIPTS=1"
+    findstr /C:"import site" "%%F" >nul 2>&1 && set "HAS_SITE=1"
+    
+    REM Add Scripts if missing
+    if !HAS_SCRIPTS!==0 (
+        REM Insert Scripts before the last line
+        powershell -NoProfile -Command "& { $lines = Get-Content '%%F'; if ($lines[-1] -match 'import') { $lines = $lines[0..($lines.Length-2)] + 'Scripts' + $lines[-1] } else { $lines += 'Scripts' }; $lines | Set-Content '%%F' }"
+        echo   Added Scripts directory
+    )
+    
+    REM Enable site packages if commented
+    if !HAS_SITE!==0 (
+        powershell -NoProfile -Command "& { (Get-Content '%%F') -replace '#import site', 'import site' | Set-Content '%%F' }"
+        echo   Enabled site packages
+    )
     
     echo   Configured: %%~nxF
     echo   Contents:
