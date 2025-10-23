@@ -369,12 +369,24 @@ echo   - Insufficient disk space
 echo   - Antivirus blocking Python installation
 echo   - Corrupted download
 echo.
-echo Press any key to exit...
-pause >nul
+
+REM Only pause if NOT called from start.bat
+if not defined CALLED_FROM_START (
+    echo Press any key to exit...
+    pause >nul
+)
 exit /b 1
 
 :END
 echo.
-echo Press any key to exit...
-pause >nul
+echo ============================================================
+echo   Setup Complete!
+echo ============================================================
+echo.
+
+REM Only pause if NOT called from start.bat
+if not defined CALLED_FROM_START (
+    echo Press any key to exit...
+    pause >nul
+)
 exit /b 0

@@ -38,11 +38,19 @@ if not exist ".setup_complete" (
     echo [1/2] Configuring embedded Python environment...
     echo.
     if exist "environments\python\setup_embedded_python.bat" (
+        set "CALLED_FROM_START=1"
         call environments\python\setup_embedded_python.bat
-        if errorlevel 1 (
+        set "EXIT_CODE=!ERRORLEVEL!"
+        set "CALLED_FROM_START="
+        
+        if !EXIT_CODE! NEQ 0 (
             echo.
-            echo ERROR: Python environment setup failed!
-            echo Please run the setup script manually:
+            echo ============================================================
+            echo   ERROR: Python environment setup failed!
+            echo ============================================================
+            echo   Exit code: !EXIT_CODE!
+            echo.
+            echo Please run the setup script manually to see detailed errors:
             echo   environments\python\setup_embedded_python.bat
             echo.
             pause

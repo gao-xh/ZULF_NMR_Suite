@@ -399,8 +399,11 @@ try {
     
     Show-Summary
     
-    Write-Host "Press Enter to exit..." -ForegroundColor Yellow
-    Read-Host
+    # Only pause if NOT called from start.ps1
+    if (-not $env:CALLED_FROM_START) {
+        Write-Host "Press Enter to exit..." -ForegroundColor Yellow
+        Read-Host
+    }
     exit 0
 }
 catch {
@@ -411,7 +414,11 @@ catch {
     Write-Host ""
     Write-Host "Error: $_" -ForegroundColor Red
     Write-Host ""
-    Write-Host "Press Enter to exit..." -ForegroundColor Yellow
-    Read-Host
+    
+    # Only pause if NOT called from start.ps1
+    if (-not $env:CALLED_FROM_START) {
+        Write-Host "Press Enter to exit..." -ForegroundColor Yellow
+        Read-Host
+    }
     exit 1
 }

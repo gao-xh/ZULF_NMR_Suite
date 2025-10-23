@@ -46,14 +46,29 @@ if (-not (Test-Path ".setup_complete")) {
     $pythonSetupScript = "environments\python\setup_embedded_python.ps1"
     if (Test-Path $pythonSetupScript) {
         try {
+            $env:CALLED_FROM_START = "1"
             & $pythonSetupScript
-            if ($LASTEXITCODE -ne 0) {
-                throw "Python setup script returned error code: $LASTEXITCODE"
+            $exitCode = $LASTEXITCODE
+            $env:CALLED_FROM_START = $null
+            
+            if ($exitCode -ne 0) {
+                Write-Host ""
+                Write-Host "============================================================" -ForegroundColor Red
+                Write-Host "  ERROR: Python environment setup failed!" -ForegroundColor Red
+                Write-Host "============================================================" -ForegroundColor Red
+                Write-Host "  Exit code: $exitCode" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Please run the setup script manually to see detailed errors:" -ForegroundColor Yellow
+                Write-Host "  $pythonSetupScript" -ForegroundColor White
+                Write-Host ""
+                Read-Host "Press Enter to exit"
+                exit 1
             }
         }
         catch {
             Write-Host ""
             Write-Host "ERROR: Python environment setup failed!" -ForegroundColor Red
+            Write-Host "Exception: $_" -ForegroundColor Yellow
             Write-Host "Please run the setup script manually:" -ForegroundColor Yellow
             Write-Host "  $pythonSetupScript" -ForegroundColor White
             Write-Host ""
