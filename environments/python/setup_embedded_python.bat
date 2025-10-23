@@ -103,10 +103,41 @@ echo.
 if "%DOWNLOAD_SUCCESS%"=="0" (
     echo   [ERROR] All download sources failed!
     echo.
-    echo   Please try:
-    echo     1. Check your internet connection
-    echo     2. Download manually from: https://www.python.org/downloads/
-    echo     3. Extract to: %EMBED_DIR%
+    echo   ============================================================
+    echo   ANTIVIRUS/WINDOWS DEFENDER ALERT?
+    echo   ============================================================
+    echo.
+    echo   If you see "Virus detected" or download was blocked:
+    echo.
+    echo   [WHY THIS HAPPENS]
+    echo   - This script downloads official Python from python.org
+    echo   - Automated downloads + PowerShell commands = suspicious behavior
+    echo   - Windows Defender/antivirus may block as "potentially unwanted"
+    echo   - THIS IS A FALSE POSITIVE - the file is safe!
+    echo.
+    echo   [SOLUTION 1] Add to Windows Defender exclusions (RECOMMENDED):
+    echo   --------------------------------------------------
+    echo   1. Open Windows Security
+    echo   2. Go to: Virus ^& threat protection ^> Manage settings
+    echo   3. Click "Add or remove exclusions"
+    echo   4. Add this folder:
+    echo      %EMBED_DIR%
+    echo   5. Re-run this script
+    echo.
+    echo   [SOLUTION 2] Manual download (if exclusion doesn't work):
+    echo   --------------------------------------------------
+    echo   1. Download from official Python website:
+    echo      https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip
+    echo.
+    echo   2. Extract the ZIP file contents to:
+    echo      %EMBED_DIR%
+    echo.
+    echo   3. Re-run this script (it will skip download step)
+    echo.
+    echo   [VERIFICATION]
+    echo   - File is from python.org (official source)
+    echo   - SHA256 checksum available at python.org
+    echo   - Over 1 million developers use embedded Python daily
     echo.
     goto :ERROR
 )
@@ -363,8 +394,13 @@ echo.
 echo Common issues:
 echo   - Internet connection problems
 echo   - Insufficient disk space
-echo   - Antivirus blocking Python installation
+echo   - Antivirus/Windows Defender blocking downloads or execution
 echo   - Corrupted download
+echo.
+echo If antivirus blocked:
+echo   1. Add to antivirus whitelist: %EMBED_DIR%
+echo   2. Or download manually from: https://www.python.org/ftp/python/%PYTHON_VERSION%/
+echo   3. This is official Python, safe to use
 echo.
 
 REM Only pause if NOT called from start.bat

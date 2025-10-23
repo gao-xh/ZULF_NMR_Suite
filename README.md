@@ -343,7 +343,15 @@ See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for architecture details.
 
 ---
 
-## �🔧 Troubleshooting
+## 🔧 Troubleshooting
+
+### Antivirus/Windows Defender Blocking Downloads
+
+If you see **"Virus detected"** during Python environment setup:
+- This is a **false positive** - the script downloads official Python from python.org
+- See [docs/troubleshooting/ANTIVIRUS_FALSE_POSITIVE.md](docs/troubleshooting/ANTIVIRUS_FALSE_POSITIVE.md) for solutions
+
+Quick fix: Add `environments/python/` to Windows Defender exclusions
 
 ### Qt Plugin Errors
 
