@@ -47,6 +47,7 @@ environments/python/*
 !environments/python/README.md
 !environments/python/setup_embedded_python.ps1
 !environments/python/setup_embedded_python.bat
+!environments/python/manual_setup.bat
 !environments/python/SETUP_GUIDE.md
 
 environments/spinach/*
