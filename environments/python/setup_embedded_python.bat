@@ -41,10 +41,31 @@ if exist "%PYTHON_EXE%" (
     "%PYTHON_EXE%" --version
     echo.
     
+    REM Check if pip is installed
+    "%PYTHON_EXE%" -m pip --version >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo [WARNING] pip is not installed, installation required
+        echo.
+        goto :CONFIGURE_PYTHON
+    )
+    
+    REM Check if essential packages are installed
+    "%PYTHON_EXE%" -c "import PySide6" >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo [WARNING] Essential packages missing, installation required
+        echo.
+        goto :CONFIGURE_PYTHON
+    )
+    
+    echo   [OK] Python and packages are ready
+    echo.
+    
     choice /C YN /M "Do you want to reinstall"
     if errorlevel 2 (
         echo.
-        echo Setup cancelled. Existing installation preserved.
+        echo Setup skipped. Using existing installation.
         echo.
         goto :END
     )
@@ -55,10 +76,12 @@ if exist "%PYTHON_EXE%" (
         if /i not "%%~nxD"=="python" rd /s /q "%%D" 2>nul
     )
     for %%F in ("%EMBED_DIR%*") do (
-        if /i not "%%~xF"==".ps1" if /i not "%%~xF"==".bat" del /q "%%F" 2>nul
+        if /i not "%%~xF"==".ps1" if /i not "%%~xF"==".bat" if /i not "%%~xF"==".md" del /q "%%F" 2>nul
     )
     echo.
 )
+
+:CONFIGURE_PYTHON
 
 REM Step 1: Download
 echo Step 1/5: Downloading embedded Python...
