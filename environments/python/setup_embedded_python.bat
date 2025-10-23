@@ -69,6 +69,15 @@ REM Try multiple download sources
 set "DOWNLOAD_SUCCESS=0"
 
 echo   Trying: %DOWNLOAD_NAME_1%
+echo   Method 1: Using certutil (less likely to trigger antivirus)...
+certutil -urlcache -split -f "%DOWNLOAD_URL_1%" "%ZIP_FILE%"
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_1%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   Method 2: Using PowerShell...
 echo.
 powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_1%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
@@ -80,6 +89,15 @@ if exist "%ZIP_FILE%" (
 echo   [FAILED] %DOWNLOAD_NAME_1%
 echo.
 echo   Trying: %DOWNLOAD_NAME_2%
+echo   Method 1: Using certutil...
+certutil -urlcache -split -f "%DOWNLOAD_URL_2%" "%ZIP_FILE%"
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_2%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   Method 2: Using PowerShell...
 echo.
 powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_2%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
@@ -91,6 +109,15 @@ if exist "%ZIP_FILE%" (
 echo   [FAILED] %DOWNLOAD_NAME_2%
 echo.
 echo   Trying: %DOWNLOAD_NAME_3%
+echo   Method 1: Using certutil...
+certutil -urlcache -split -f "%DOWNLOAD_URL_3%" "%ZIP_FILE%"
+if exist "%ZIP_FILE%" (
+    set "DOWNLOAD_SUCCESS=1"
+    echo   [OK] Downloaded from %DOWNLOAD_NAME_3%
+    goto :DOWNLOAD_COMPLETE
+)
+
+echo   Method 2: Using PowerShell...
 echo.
 powershell -NoProfile -Command "& {$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%DOWNLOAD_URL_3%' -OutFile '%ZIP_FILE%' -UseBasicParsing -TimeoutSec 30; Write-Host '[OK] Download completed' -ForegroundColor Green } catch { Write-Host '[ERROR] Download failed:' $_.Exception.Message -ForegroundColor Red; exit 1 }}"
 if exist "%ZIP_FILE%" (
