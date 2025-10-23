@@ -162,7 +162,7 @@ if not exist "%GET_PIP%" (
 )
 
 echo   Running pip installer...
-"%PYTHON_EXE%" "%GET_PIP%" --quiet --no-warn-script-location
+"%PYTHON_EXE%" "%GET_PIP%"
 if errorlevel 1 (
     echo   [ERROR] pip installation failed!
     echo.
@@ -173,26 +173,21 @@ del /q "%GET_PIP%" 2>nul
 REM Ensure setuptools and wheel are installed first
 echo   Installing build tools (setuptools, wheel)...
 echo   This may take a moment, please wait...
+echo.
 
-REM First try with upgrade (quiet mode)
-"%PYTHON_EXE%" -m pip install --upgrade setuptools wheel --quiet --no-warn-script-location 2>nul
+REM Install with full output visible
+"%PYTHON_EXE%" -m pip install --upgrade setuptools wheel
+set "SETUP_EXIT_CODE=%ERRORLEVEL%"
 
-if errorlevel 1 (
-    echo   [INFO] Trying without --upgrade flag...
-    REM Try without upgrade (show output for debugging)
-    "%PYTHON_EXE%" -m pip install setuptools wheel --no-warn-script-location
-    
-    if errorlevel 1 (
-        echo.
-        echo   [WARNING] Could not install build tools
-        echo   This may cause some packages to fail during installation
-        echo   However, many packages have pre-built wheels and will work fine
-        echo.
-    ) else (
-        echo   [OK] Build tools installed
-    )
+if %SETUP_EXIT_CODE% NEQ 0 (
+    echo.
+    echo   [WARNING] Build tools installation failed with exit code: %SETUP_EXIT_CODE%
+    echo   Continuing anyway - some packages may fail to install
+    echo.
 ) else (
+    echo.
     echo   [OK] Build tools installed successfully
+    echo.
 )
 
 echo   [OK] pip installation complete
@@ -212,16 +207,18 @@ if exist "%REQUIREMENTS_FILE%" (
     echo.
     
     REM Try installing with binary wheels only (no source builds)
-    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --only-binary :all: --quiet --no-warn-script-location 2>nul
+    "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --only-binary :all:
     
     if errorlevel 1 (
+        echo.
         echo   [WARNING] Binary-only installation failed, trying with selective builds...
         echo.
         
         REM Install packages that don't need compilation first
-        "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%" --quiet --no-warn-script-location 2>nul
+        "%PYTHON_EXE%" -m pip install -r "%REQUIREMENTS_FILE%"
         
         if errorlevel 1 (
+            echo.
             echo   [ERROR] Full requirements.txt installation failed
             echo.
             echo   This may be due to:
@@ -260,56 +257,56 @@ set "PKG_COUNT=0"
 set "SUCCESS_COUNT=0"
     
     echo     Installing PySide6==6.7.3...
-    "%PYTHON_EXE%" -m pip install PySide6==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install PySide6==6.7.3 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing PySide6-Addons==6.7.3...
-    "%PYTHON_EXE%" -m pip install PySide6-Addons==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install PySide6-Addons==6.7.3 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing PySide6-Essentials==6.7.3...
-    "%PYTHON_EXE%" -m pip install PySide6-Essentials==6.7.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install PySide6-Essentials==6.7.3 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing numpy==2.3.3...
-    "%PYTHON_EXE%" -m pip install numpy==2.3.3 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install numpy==2.3.3 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing scipy==1.16.2...
-    "%PYTHON_EXE%" -m pip install scipy==1.16.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install scipy==1.16.2 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing matplotlib==3.10.0...
-    "%PYTHON_EXE%" -m pip install matplotlib==3.10.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install matplotlib==3.10.0 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing pandas==2.3.1...
-    "%PYTHON_EXE%" -m pip install pandas==2.3.1 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install pandas==2.3.1 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing pillow==11.3.0...
-    "%PYTHON_EXE%" -m pip install pillow==11.3.0 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install pillow==11.3.0 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing requests==2.32.4...
-    "%PYTHON_EXE%" -m pip install requests==2.32.4 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install requests==2.32.4 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing pyyaml==6.0.2...
-    "%PYTHON_EXE%" -m pip install pyyaml==6.0.2 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install pyyaml==6.0.2 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing colorama==0.4.6...
-    "%PYTHON_EXE%" -m pip install colorama==0.4.6 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install colorama==0.4.6 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo     Installing tqdm==4.67.1...
-    "%PYTHON_EXE%" -m pip install tqdm==4.67.1 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install tqdm==4.67.1 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     REM Optional: psutil (may require Visual C++ Build Tools)
     echo     Installing psutil==5.9.0 (may require C++ Build Tools)...
-    "%PYTHON_EXE%" -m pip install psutil==5.9.0 --only-binary :all: --quiet --no-warn-script-location 2>nul
+    "%PYTHON_EXE%" -m pip install psutil==5.9.0 --only-binary :all: 2>nul
     if errorlevel 1 (
         echo       [SKIPPED] psutil - Binary wheel not available, C++ Build Tools needed
     ) else (
@@ -318,7 +315,7 @@ set "SUCCESS_COUNT=0"
     set /a PKG_COUNT+=1
     
     echo     Installing pywin32==311...
-    "%PYTHON_EXE%" -m pip install pywin32==311 --quiet --no-warn-script-location && set /a SUCCESS_COUNT+=1
+    "%PYTHON_EXE%" -m pip install pywin32==311 && set /a SUCCESS_COUNT+=1
     set /a PKG_COUNT+=1
     
     echo.
